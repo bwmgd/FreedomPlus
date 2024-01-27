@@ -1644,7 +1644,7 @@ class FreedomSettingActivity : XplerActivity() {
 
                         if (showTriggerDialog) {
                             FMessageDialog(
-                                title = "请选择双击响应模式",
+                                title = "请选择${triggerType.value}响应内容",
                                 confirm = "更改",
                                 onlyConfirm = true,
                                 onConfirm = { showTriggerDialog = false },
