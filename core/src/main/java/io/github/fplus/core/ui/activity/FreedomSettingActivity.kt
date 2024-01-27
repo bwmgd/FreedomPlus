@@ -8,8 +8,11 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,8 +21,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Checkbox
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Divider
@@ -60,6 +65,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.freegang.ktutils.app.KToastUtils
 import com.freegang.ktutils.reflect.methodInvokeFirst
+import io.github.fplus.OperateType
+import io.github.fplus.TriggerType
 import io.github.fplus.core.R
 import io.github.fplus.core.helper.DexkitBuilder
 import io.github.fplus.core.helper.HighlightStyleBuilder
@@ -81,8 +88,10 @@ import kotlin.system.exitProcess
 
 class FreedomSettingActivity : XplerActivity() {
     private val model by lazy {
-        ViewModelProvider(this, ViewModelProvider.AndroidViewModelFactory(application))
-            .get(FreedomSettingVM::class.java)
+        ViewModelProvider(
+            this,
+            ViewModelProvider.AndroidViewModelFactory(application)
+        )[FreedomSettingVM::class.java]
     }
 
     private var isModuleStart = false
@@ -184,6 +193,7 @@ class FreedomSettingActivity : XplerActivity() {
                     val rotateAnimate by animateFloatAsState(
                         targetValue = rotate,
                         animationSpec = tween(durationMillis = Random.nextInt(500, 1500)),
+                        label = "",
                     )
 
                     // 更新日志弹窗
@@ -235,7 +245,10 @@ class FreedomSettingActivity : XplerActivity() {
                                                     }
                                             }.onFailure {
                                                 withContext(Dispatchers.Main) {
-                                                    KToastUtils.show(application, "更新日志获取失败")
+                                                    KToastUtils.show(
+                                                        application,
+                                                        "更新日志获取失败"
+                                                    )
                                                 }
                                             }
                                         }
@@ -506,74 +519,7 @@ class FreedomSettingActivity : XplerActivity() {
                 )
             }
             item {
-                var showDoubleClickModeDialog by remember { mutableStateOf(false) }
-
-                SwitchItem(
-                    text = "双击视频响应类型",
-                    subtext = "点击调整双击视频响应方式",
-                    checked = model.isDoubleClickType.observeAsState(false),
-                    onClick = {
-                        showDoubleClickModeDialog = true
-                    },
-                    onCheckedChange = {
-                        model.changeIsDoubleClickType(it)
-                    }
-                )
-
-                if (showDoubleClickModeDialog) {
-                    var radioIndex by remember { mutableStateOf(model.doubleClickType.value ?: 2) }
-                    FMessageDialog(
-                        title = "请选择双击响应模式",
-                        confirm = "更改",
-                        onlyConfirm = true,
-                        onConfirm = { showDoubleClickModeDialog = false },
-                    ) {
-                        Column {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                RadioButton(
-                                    selected = radioIndex == 0,
-                                    onClick = {
-                                        radioIndex = 0
-                                        model.changeDoubleClickType(radioIndex)
-                                    },
-                                )
-                                Spacer(modifier = Modifier.padding(horizontal = 4.dp))
-                                Text(
-                                    text = "暂停视频",
-                                    style = MaterialTheme.typography.body1,
-                                )
-                            }
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                RadioButton(
-                                    selected = radioIndex == 1,
-                                    onClick = {
-                                        radioIndex = 1
-                                        model.changeDoubleClickType(radioIndex)
-                                    },
-                                )
-                                Spacer(modifier = Modifier.padding(horizontal = 4.dp))
-                                Text(
-                                    text = "打开评论",
-                                    style = MaterialTheme.typography.body1,
-                                )
-                            }
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                RadioButton(
-                                    selected = radioIndex == 2,
-                                    onClick = {
-                                        radioIndex = 2
-                                        model.changeDoubleClickType(radioIndex)
-                                    },
-                                )
-                                Spacer(modifier = Modifier.padding(horizontal = 4.dp))
-                                Text(
-                                    text = "点赞视频",
-                                    style = MaterialTheme.typography.body1,
-                                )
-                            }
-                        }
-                    }
-                }
+                OperateItem()
             }
             item {
                 SwitchItem(
@@ -677,7 +623,11 @@ class FreedomSettingActivity : XplerActivity() {
                 )
 
                 if (showFilterDialog) {
-                    var inputValue by remember { mutableStateOf(model.videoOptionBarFilterKeywords.value ?: "") }
+                    var inputValue by remember {
+                        mutableStateOf(
+                            model.videoOptionBarFilterKeywords.value ?: ""
+                        )
+                    }
                     FMessageDialog(
                         title = {
                             Row(
@@ -742,7 +692,10 @@ class FreedomSettingActivity : XplerActivity() {
                                 },
                                 visualTransformation = { text ->
                                     TransformedText(
-                                        text = buildFilterTypeStyle(model.videoOptionBarFilterTypes, text.text),
+                                        text = buildFilterTypeStyle(
+                                            model.videoOptionBarFilterTypes,
+                                            text.text
+                                        ),
                                         offsetMapping = OffsetMapping.Identity
                                     )
                                 }
@@ -797,7 +750,11 @@ class FreedomSettingActivity : XplerActivity() {
                 )
 
                 if (showFilterDialog) {
-                    var inputValue by remember { mutableStateOf(model.videoFilterKeywords.value ?: "") }
+                    var inputValue by remember {
+                        mutableStateOf(
+                            model.videoFilterKeywords.value ?: ""
+                        )
+                    }
                     FMessageDialog(
                         title = {
                             Row(
@@ -862,7 +819,10 @@ class FreedomSettingActivity : XplerActivity() {
                                 },
                                 visualTransformation = { text ->
                                     TransformedText(
-                                        text = buildFilterTypeStyle(model.videoFilterTypes, text.text),
+                                        text = buildFilterTypeStyle(
+                                            model.videoFilterTypes,
+                                            text.text
+                                        ),
                                         offsetMapping = OffsetMapping.Identity
                                     )
                                 }
@@ -913,7 +873,11 @@ class FreedomSettingActivity : XplerActivity() {
                 )
 
                 if (showFilterDialog) {
-                    var inputValue by remember { mutableStateOf(model.dialogFilterKeywords.value ?: "") }
+                    var inputValue by remember {
+                        mutableStateOf(
+                            model.dialogFilterKeywords.value ?: ""
+                        )
+                    }
                     FMessageDialog(
                         title = {
                             Row(
@@ -1019,62 +983,6 @@ class FreedomSettingActivity : XplerActivity() {
 
             }
             item {
-                var showLongPressModeDialog by remember { mutableStateOf(false) }
-
-                SwitchItem(
-                    text = "清爽模式",
-                    subtext = "长按视频进入清爽模式, 点击更改响应模式",
-                    checked = model.isNeatMode.observeAsState(false),
-                    onClick = {
-                        showLongPressModeDialog = true
-                    },
-                    onCheckedChange = {
-                        model.changeIsNeatMode(it)
-                    }
-                )
-
-                if (showLongPressModeDialog) {
-                    var longPressMode by remember { mutableStateOf(model.longPressMode.value ?: true) }
-                    FMessageDialog(
-                        title = "请选择响应模式",
-                        confirm = "更改",
-                        onlyConfirm = true,
-                        onConfirm = { showLongPressModeDialog = false },
-                    ) {
-                        Column {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                RadioButton(
-                                    selected = longPressMode,
-                                    onClick = {
-                                        longPressMode = true
-                                        model.changeLongPressMode(longPressMode)
-                                    },
-                                )
-                                Spacer(modifier = Modifier.padding(horizontal = 4.dp))
-                                Text(
-                                    text = "长按视频上半",
-                                    style = MaterialTheme.typography.body1,
-                                )
-                            }
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                RadioButton(
-                                    selected = !longPressMode,
-                                    onClick = {
-                                        longPressMode = false
-                                        model.changeLongPressMode(longPressMode)
-                                    },
-                                )
-                                Spacer(modifier = Modifier.padding(horizontal = 4.dp))
-                                Text(
-                                    text = "长按视频下半",
-                                    style = MaterialTheme.typography.body1,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-            item {
                 var showSettingDialog by remember { mutableStateOf(false) }
 
                 SwitchItem(
@@ -1091,7 +999,8 @@ class FreedomSettingActivity : XplerActivity() {
                 )
 
                 if (showSettingDialog) {
-                    val systemControllerValue = model.systemControllerValue.value ?: listOf(false, false)
+                    val systemControllerValue =
+                        model.systemControllerValue.value ?: listOf(false, false)
                     val isHideStatusBar = remember { mutableStateOf(systemControllerValue[0]) }
                     val isHideNavigateBar = remember { mutableStateOf(systemControllerValue[1]) }
                     FMessageDialog(
@@ -1400,7 +1309,10 @@ class FreedomSettingActivity : XplerActivity() {
                                                             }
                                                         )
                                                         .fillMaxWidth()
-                                                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                                                        .padding(
+                                                            horizontal = 16.dp,
+                                                            vertical = 12.dp
+                                                        )
                                                 )
                                             }
                                         }
@@ -1684,6 +1596,93 @@ class FreedomSettingActivity : XplerActivity() {
                     },
                 )
             }*/
+        }
+    }
+
+
+    @OptIn(ExperimentalLayoutApi::class)
+    @Composable
+    private fun OperateItem() {
+        var showDoubleClickModeDialog by remember { mutableStateOf(false) }
+
+        SwitchItem(
+            text = "双击/长按视频响应类型",
+            subtext = "点击调整视频响应方式",
+            checked = model.isTriggerType.observeAsState(false),
+            onClick = {
+                showDoubleClickModeDialog = true
+            },
+            onCheckedChange = {
+                model.changeIsDoubleClickType(it)
+            }
+        )
+
+        if (showDoubleClickModeDialog) {
+            FMessageDialog(
+                title = "请点击需要调整的响应模式",
+                confirm = "更改",
+                onlyConfirm = true,
+                onConfirm = { showDoubleClickModeDialog = false },
+            ) {
+                var doubleClickType by remember {
+                    mutableStateOf(model.triggerOperateType.value ?: "000000")
+                }
+                FlowRow(horizontalArrangement = Arrangement.Center, maxItemsInEachRow = 2) {
+                    TriggerType.values().forEachIndexed { index, triggerType ->
+                        var showTriggerDialog by remember { mutableStateOf(false) }
+
+                        Text(
+                            text = triggerType.value,
+                            style = MaterialTheme.typography.body1,
+                            modifier = Modifier
+                                .clickable {
+                                    showTriggerDialog = true
+                                }
+                                .padding(5.dp)
+                                .weight(1f, true)
+                        )
+
+                        if (showTriggerDialog) {
+                            FMessageDialog(
+                                title = "请选择双击响应模式",
+                                confirm = "更改",
+                                onlyConfirm = true,
+                                onConfirm = { showTriggerDialog = false },
+                            ) {
+                                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                                    for (type in OperateType.values()) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            RadioButton(
+                                                selected = OperateType.fromTriggerString(
+                                                    doubleClickType,
+                                                    triggerType
+                                                ) == type,
+                                                onClick = {
+                                                    doubleClickType = doubleClickType.replaceRange(
+                                                        index,
+                                                        index + 1,
+                                                        type.ordinal.toString()
+                                                    )
+                                                    model.changeDoubleClickType(doubleClickType)
+                                                },
+                                            )
+                                            Spacer(
+                                                modifier = Modifier.padding(
+                                                    horizontal = 4.dp
+                                                )
+                                            )
+                                            Text(
+                                                text = type.value,
+                                                style = MaterialTheme.typography.body1,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 

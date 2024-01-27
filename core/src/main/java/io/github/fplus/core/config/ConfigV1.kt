@@ -116,7 +116,8 @@ class ConfigV1 private constructor() {
     /// 首页控件透明度 [顶部导航, 视频控件, 视频控件右侧, 底部导航]
     var translucentValue: List<Int> = listOf(50, 50, 50, 50)
         get() {
-            field = mmkv.getString("translucentValue", "50, 50, 50, 50")!!.split(",").map { it.trim().toInt() }
+            field = mmkv.getString("translucentValue", "50, 50, 50, 50")!!.split(",")
+                .map { it.trim().toInt() }
 
             return if (field.size == 3) {
                 listOf(field[0], field[1], field[1], field[2])
@@ -130,24 +131,24 @@ class ConfigV1 private constructor() {
         }
 
     /// 双击屏幕响应类型
-    var isDoubleClickType: Boolean = false
+    var isTriggerType: Boolean = false
         get() {
-            field = mmkv.getBoolean("isDoubleClickType", false)
+            field = mmkv.getBoolean("isTriggerType", false)
             return field
         }
         set(value) {
-            mmkv.putBoolean("isDoubleClickType", value)
+            mmkv.putBoolean("isTriggerType", value)
             field = value
         }
 
-    /// 双击响应类型: 0=暂停视频, 1=打开评论, 2=点赞视频
-    var doubleClickType: Int = 2
+    /// "00000" 代表:长按(左上,右上,左下,右下),双击 内容为OperateType(0~7)
+    var triggerOperateType: String = "00000"
         get() {
-            field = mmkv.getInt("doubleClickType", 2)
+            field = mmkv.getString("triggerOperate", "00000") ?: "00000"
             return field
         }
         set(value) {
-            mmkv.putInt("doubleClickType", value)
+            mmkv.putString("triggerOperate", value)
             field = value
         }
 
@@ -289,17 +290,6 @@ class ConfigV1 private constructor() {
             field = value
         }
 
-    /// 清爽模式弹窗响应模式 true上半, false下半
-    var longPressMode: Boolean = false
-        get() {
-            field = mmkv.getBoolean("longPressMode", false)
-            return field
-        }
-        set(value) {
-            mmkv.putBoolean("longPressMode", value)
-            field = value
-        }
-
     /// 移除悬浮挑战/评论贴纸
     var isRemoveSticker: Boolean = false
         get() {
@@ -335,7 +325,8 @@ class ConfigV1 private constructor() {
     // 系统隐藏项(状态栏、导航栏)
     var systemControllerValue: List<Boolean> = listOf(false, false)
         get() {
-            return mmkv.getString("systemControllerValue", "false, false")!!.split(",").map { it.trim().toBoolean() }
+            return mmkv.getString("systemControllerValue", "false, false")!!.split(",")
+                .map { it.trim().toBoolean() }
         }
         set(value) {
             mmkv.putString("systemControllerValue", value.joinToString())
@@ -453,7 +444,8 @@ class ConfigV1 private constructor() {
     /// 定时退出 [运行时间, 空闲时间]
     var timedShutdownValue: List<Int> = listOf(10, 3)
         get() {
-            field = mmkv.getString("timedShutdownValue", "10, 3")!!.split(",").map { it.trim().toInt() }
+            field =
+                mmkv.getString("timedShutdownValue", "10, 3")!!.split(",").map { it.trim().toInt() }
             return field
         }
         set(value) {
@@ -473,7 +465,7 @@ class ConfigV1 private constructor() {
         }
 
     /// 版本信息
-    var versionConfig: ConfigV1.Version = ConfigV1.Version()
+    var versionConfig: Version = Version()
         get() {
             return Version(
                 mmkv.getString("versionName", "")!!,

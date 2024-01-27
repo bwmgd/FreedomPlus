@@ -2,6 +2,8 @@ package io.github.fplus.core.hook
 
 import android.view.MotionEvent
 import de.robv.android.xposed.XC_MethodHook
+import io.github.fplus.OperateType
+import io.github.fplus.TriggerType
 import io.github.fplus.core.base.BaseHook
 import io.github.fplus.core.config.ConfigV1
 import io.github.fplus.core.helper.DexkitBuilder
@@ -24,11 +26,13 @@ class HVideoPlayerHelper : BaseHook<Any>() {
     @OnBefore
     fun methodBefore(params: XC_MethodHook.MethodHookParam, event: MotionEvent?) {
         hookBlockRunning(params) {
-            if (!config.isDoubleClickType) {
+            if (!config.isTriggerType) {
                 return
             }
 
-            if (config.doubleClickType != 2) {
+            val operateType =
+                OperateType.fromTriggerString(config.triggerOperateType, TriggerType.DOUBLE_CLICK)
+            if (operateType != OperateType.LIKE && operateType != OperateType.ORIGINAL) {
                 result = null
             }
         }.onFailure {

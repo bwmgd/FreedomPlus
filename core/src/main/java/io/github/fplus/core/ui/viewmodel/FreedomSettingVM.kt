@@ -58,11 +58,12 @@ class FreedomSettingVM(application: Application) : AndroidViewModel(application)
     private var _isRemoveBottomCtrlBar = MutableLiveData(false)
     val isRemoveBottomCtrlBar: LiveData<Boolean> = _isRemoveBottomCtrlBar
 
-    private var _isDoubleClickType = MutableLiveData(false)
-    val isDoubleClickType: LiveData<Boolean> = _isDoubleClickType
+    private var _isTriggerType = MutableLiveData(false)
+    val isTriggerType: LiveData<Boolean> = _isTriggerType
 
-    private var _doubleClickType = MutableLiveData(2)
-    val doubleClickType: LiveData<Int> = _doubleClickType
+    // 长按(左上,右上,左下,右下) 双击
+    private var _triggerOperateType = MutableLiveData("00000")
+    val triggerOperateType: LiveData<String> = _triggerOperateType
 
     private var _isLongtimeVideoToast = MutableLiveData(false)
     val isLongtimeVideoToast: LiveData<Boolean> = _isLongtimeVideoToast
@@ -102,9 +103,6 @@ class FreedomSettingVM(application: Application) : AndroidViewModel(application)
 
     private var _systemControllerValue = MutableLiveData(listOf(false, false))
     val systemControllerValue: LiveData<List<Boolean>> = _systemControllerValue
-
-    private var _longPressMode = MutableLiveData(false)
-    val longPressMode: LiveData<Boolean> = _longPressMode
 
     private var _isCommentColorMode = MutableLiveData(false)
     val isCommentColorMode: LiveData<Boolean> = _isCommentColorMode
@@ -166,8 +164,8 @@ class FreedomSettingVM(application: Application) : AndroidViewModel(application)
             changeTranslucentValue(config.translucentValue)
             changeIsRemoveSticker(config.isRemoveSticker)
             changeIsRemoveBottomCtrlBar(config.isRemoveBottomCtrlBar)
-            changeIsDoubleClickType(config.isDoubleClickType)
-            changeDoubleClickType(config.doubleClickType)
+            changeIsDoubleClickType(config.isTriggerType)
+            changeDoubleClickType(config.triggerOperateType)
             changeIsLongtimeVideoToast(config.isLongtimeVideoToast)
             changeIsHidePhotoButton(config.isHidePhotoButton)
             changePhotoButtonType(config.photoButtonType)
@@ -179,7 +177,6 @@ class FreedomSettingVM(application: Application) : AndroidViewModel(application)
             changeDialogDismissTips(config.dialogDismissTips)
             setDialogFilterKeywords(config.dialogFilterKeywords)
             changeIsNeatMode(config.isNeatMode)
-            changeLongPressMode(config.longPressMode)
             changeIsImmersive(config.isImmersive)
             changeSystemControllerValue(config.systemControllerValue)
             changeIsCommentColorMode(config.isCommentColorMode)
@@ -251,14 +248,14 @@ class FreedomSettingVM(application: Application) : AndroidViewModel(application)
 
     // 是否开启更改双击响应类型
     fun changeIsDoubleClickType(value: Boolean) {
-        _isDoubleClickType.value = value
-        config.isDoubleClickType = value
+        _isTriggerType.value = value
+        config.isTriggerType = value
     }
 
     // 双击响应类型
-    fun changeDoubleClickType(value: Int) {
-        _doubleClickType.value = value
-        config.doubleClickType = value
+    fun changeDoubleClickType(value: String) {
+        _triggerOperateType.value = value
+        config.triggerOperateType = value
     }
 
     // 视频时长超过5分钟提示
@@ -343,12 +340,6 @@ class FreedomSettingVM(application: Application) : AndroidViewModel(application)
         config.systemControllerValue = value
     }
 
-    // 清爽模式弹窗响应模式
-    fun changeLongPressMode(value: Boolean) {
-        _longPressMode.value = value
-        config.longPressMode = value
-    }
-
     // 评论区颜色模式
     fun changeIsCommentColorMode(value: Boolean) {
         _isCommentColorMode.value = value
@@ -391,7 +382,8 @@ class FreedomSettingVM(application: Application) : AndroidViewModel(application)
         }
         viewModelScope.launch {
             try {
-                val webDav = WebDav(webDavHost.value!!, webDavUsername.value!!, webDavPassword.value!!)
+                val webDav =
+                    WebDav(webDavHost.value!!, webDavUsername.value!!, webDavPassword.value!!)
                 if (!webDav.exists("Freedom", isDirectory = true)) {
                     webDav.createDirectory("Freedom")
                 }
@@ -475,10 +467,10 @@ class FreedomSettingVM(application: Application) : AndroidViewModel(application)
         val versionName = version.substringBeforeLast("-")
         val versionCode = version.substringAfterLast("-")
         config.versionConfig = config.versionConfig.copy(
-            versionName,
-            versionCode.toLong(),
-            app.appVersionName,
-            app.appVersionCode,
+            versionName = versionName,
+            versionCode = versionCode.toLong(),
+            dyVersionName = app.appVersionName,
+            dyVersionCode = app.appVersionCode,
         )
     }
 

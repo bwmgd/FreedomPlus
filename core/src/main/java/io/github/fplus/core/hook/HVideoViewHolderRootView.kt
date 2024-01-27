@@ -24,6 +24,8 @@ import com.freegang.ktutils.view.toViewTreeString
 import com.ss.android.ugc.aweme.ad.feed.VideoViewHolderRootView
 import com.ss.android.ugc.aweme.feed.ui.PenetrateTouchRelativeLayout
 import de.robv.android.xposed.XC_MethodHook
+import io.github.fplus.OperateType
+import io.github.fplus.TriggerType
 import io.github.fplus.core.base.BaseHook
 import io.github.fplus.core.config.ConfigV1
 import io.github.fplus.core.hook.logic.DownloadLogic
@@ -33,7 +35,6 @@ import io.github.xpler.core.KtXposedHelpers
 import io.github.xpler.core.entity.OnBefore
 import io.github.xpler.core.hookBlockRunning
 import io.github.xpler.core.thisView
-import io.github.xpler.core.thisViewGroup
 import kotlin.math.abs
 
 class HVideoViewHolderRootView : BaseHook<VideoViewHolderRootView>() {
@@ -103,29 +104,13 @@ class HVideoViewHolderRootView : BaseHook<VideoViewHolderRootView>() {
                     }
 
                     // 模块菜单显示逻辑
-                    val viewGroup = thisViewGroup
-                    if (config.longPressMode) {
-                        if (event.y < screenSize.height / 2) {
-                            longPressRunnable = Runnable {
-                                showOptionsMenuV1(viewGroup)
-                                // showOptionsMenuV2(viewGroup)
-                                viewGroup.parentView?.dispatchTouchEvent(cancelEvent)
+                    TriggerType.judgement(event.x, event.y, thisView.width, thisView.height)?.let {
+                        longPressRunnable = Runnable {
+                            if (doOperate(thisView, it, cancelEvent)) {
+                                thisView.parentView?.dispatchTouchEvent(cancelEvent)
                             }
-                            handler.postDelayed(longPressRunnable!!, 300L)
-                        } else {
-
                         }
-                    } else {
-                        if (event.y > screenSize.height / 2) {
-                            longPressRunnable = Runnable {
-                                showOptionsMenuV1(viewGroup)
-                                // showOptionsMenuV2(viewGroup)
-                                viewGroup.parentView?.dispatchTouchEvent(cancelEvent)
-                            }
-                            handler.postDelayed(longPressRunnable!!, 300L)
-                        } else {
-
-                        }
+                        handler.postDelayed(longPressRunnable!!, 300L)
                     }
                 }
 
@@ -169,14 +154,9 @@ class HVideoViewHolderRootView : BaseHook<VideoViewHolderRootView>() {
                 }
 
                 // 防止双击点赞 (see at: HVideoPlayerHelper#callOnBeforeMethods#禁用双击点赞)
-                if (KFastClickUtils.isFastDoubleClick(300L) && config.isDoubleClickType) {
+                if (KFastClickUtils.isFastDoubleClick(300L) && config.isTriggerType) {
                     thisView.parentView?.dispatchTouchEvent(cancelEvent)
-                    // 打开评论区
-                    if (config.doubleClickType == 1) {
-                        onClickViewV2(thisView, targetContent = Regex("评论(.*?)，按钮"))
-                    } else if (config.doubleClickType == 0) {
-                        result = true
-                    }
+                    doOperate(thisView, TriggerType.DOUBLE_CLICK, cancelEvent)
                     return true
                 }
             }
@@ -184,6 +164,51 @@ class HVideoViewHolderRootView : BaseHook<VideoViewHolderRootView>() {
             KLogCat.tagE(TAG, it)
         }
         return false
+    }
+
+    private fun doOperate(view: View, triggerType: TriggerType, cancelEvent: MotionEvent): Boolean {
+        when (OperateType.fromTriggerString(config.triggerOperateType, triggerType)) {
+            OperateType.LIKE -> {
+                onClickViewV2(view, targetContent = Regex("点赞(.*?)，按钮"))
+                showToast(view.context, "点赞成功")
+            }
+
+            OperateType.COMMENT -> {
+                onClickViewV2(view, targetContent = Regex("评论(.*?)，按钮"))
+            }
+
+            OperateType.FORWARD -> {
+                onClickViewV2(view, targetContent = Regex("分享(.*?)，按钮"))
+            }
+
+            OperateType.COLLECT -> {
+                onClickViewV2(view, targetContent = Regex("收藏(.*?)，按钮"))
+                showToast(view.context, "收藏成功")
+            }
+
+            OperateType.DOWNLOAD -> {
+                DownloadLogic(
+                    this@HVideoViewHolderRootView,
+                    view.context,
+                    HVideoViewHolder.aweme,
+                )
+            }
+
+            OperateType.ORIGINAL -> {
+                return false
+            }
+
+            OperateType.MODULE -> {
+                showOptionsMenuV1(view)
+                view.parentView?.dispatchTouchEvent(cancelEvent)
+            }
+
+            OperateType.PAUSE -> {
+                // 暂停视频
+                KAutomationUtils.simulateClickByView(view, view.width / 2f, view.height / 2f)
+            }
+        }
+        return true
     }
 
     private fun onActionUpEvent(params: XC_MethodHook.MethodHookParam, event: MotionEvent) {
@@ -206,7 +231,7 @@ class HVideoViewHolderRootView : BaseHook<VideoViewHolderRootView>() {
         }
     }
 
-    private fun showOptionsMenuV1(view: ViewGroup) {
+    private fun showOptionsMenuV1(view: View) {
         if (HDetailPageFragment.isComment) return
 
         val items = mutableListOf("评论", "收藏", "分享", "下载")
@@ -298,7 +323,8 @@ class HVideoViewHolderRootView : BaseHook<VideoViewHolderRootView>() {
                                 .append("\n")
                         }
                         if (HVerticalViewPager.filterOtherCount > 0) {
-                            builder.append("关键字过滤: ").append(HVerticalViewPager.filterOtherCount)
+                            builder.append("关键字过滤: ")
+                                .append(HVerticalViewPager.filterOtherCount)
                         }
                         val msg = builder.toString().trim()
                         if (msg.isEmpty()) {
@@ -309,7 +335,8 @@ class HVideoViewHolderRootView : BaseHook<VideoViewHolderRootView>() {
                     }
 
                     "模块设置" -> {
-                        val intent = Intent().setClass(it.context, FreedomSettingActivity::class.java)
+                        val intent =
+                            Intent().setClass(it.context, FreedomSettingActivity::class.java)
                         intent.putExtra("isDark", view.context.isDarkMode)
                         val options = ActivityOptions.makeCustomAnimation(
                             activeActivity,
@@ -386,7 +413,10 @@ class HVideoViewHolderRootView : BaseHook<VideoViewHolderRootView>() {
                         "清爽模式", "普通模式" -> {
                             config.neatModeState = !config.neatModeState
                             toggleView(view, !config.neatModeState)
-                            showToast(view.context, if (config.neatModeState) "清爽模式" else "普通模式")
+                            showToast(
+                                view.context,
+                                if (config.neatModeState) "清爽模式" else "普通模式"
+                            )
                         }
 
                         "评论" -> {
@@ -447,7 +477,8 @@ class HVideoViewHolderRootView : BaseHook<VideoViewHolderRootView>() {
                                     .append("\n")
                             }
                             if (HVerticalViewPager.filterOtherCount > 0) {
-                                builder.append("关键字过滤: ").append(HVerticalViewPager.filterOtherCount)
+                                builder.append("关键字过滤: ")
+                                    .append(HVerticalViewPager.filterOtherCount)
                             }
                             val msg = builder.toString().trim()
                             if (msg.isEmpty()) {
@@ -469,7 +500,10 @@ class HVideoViewHolderRootView : BaseHook<VideoViewHolderRootView>() {
 
                         "视频信息" -> {
                             if (HVerticalViewPager.currentAweme == null) {
-                                KToastUtils.show(view.context.applicationContext, "未获取到视频信息!")
+                                KToastUtils.show(
+                                    view.context.applicationContext,
+                                    "未获取到视频信息!"
+                                )
                                 return@FreedomDialog
                             }
                             KLogCat.clearStorage()
@@ -521,7 +555,11 @@ class HVideoViewHolderRootView : BaseHook<VideoViewHolderRootView>() {
                 location[0] = location[0] + right / 2
                 location[1] = location[1] + bottom / 2
                 if (!KFastClickUtils.isFastDoubleClick(200)) {
-                    KAutomationUtils.simulateClickByView(this, location[0].toFloat(), location[1].toFloat())
+                    KAutomationUtils.simulateClickByView(
+                        this,
+                        location[0].toFloat(),
+                        location[1].toFloat()
+                    )
                 }
                 return@forEachChild
             }
