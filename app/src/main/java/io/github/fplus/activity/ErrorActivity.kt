@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,18 +27,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import com.freegang.extension.activeActivity
+import com.freegang.extension.appVersionCode
+import com.freegang.extension.appVersionName
+import com.freegang.ktutils.app.KAppCrashUtils
 import io.github.fplus.FreedomTheme
 import io.github.fplus.R
 import io.github.fplus.Themes
-import io.github.fplus.resource.StringRes
-import com.freegang.ktutils.app.activeActivity
-import com.freegang.ktutils.app.appVersionCode
-import com.freegang.ktutils.app.appVersionName
 import io.github.fplus.core.ui.component.ScrollableContainer
+import io.github.fplus.resource.IconRes
+import io.github.fplus.resource.StringRes
+import io.github.fplus.resource.icons.Acute
 import kotlin.system.exitProcess
 
 class ErrorActivity : ComponentActivity() {
-    private var errMessage: String? = null
+    private var crashMessage: String? = null
 
     @OptIn(ExperimentalFoundationApi::class)
     @Composable
@@ -62,7 +66,8 @@ class ErrorActivity : ComponentActivity() {
                 )
             }
             Icon(
-                painter = painterResource(R.drawable.ic_acute),
+                // painter = painterResource(R.drawable.ic_acute),
+                imageVector = IconRes.Acute,
                 contentDescription = "分享",
                 tint = Themes.nowColors.icon,
                 modifier = Modifier
@@ -71,10 +76,10 @@ class ErrorActivity : ComponentActivity() {
                         indication = null,
                         interactionSource = remember { MutableInteractionSource() },
                         onClick = {
-                            shareErrorMessage(errMessage!!)
+                            shareCrashMessage()
                         },
                         onLongClick = {
-                            shareErrorMessage(errMessage!!)
+                            shareCrashMessage()
                         }
                     )
             )
@@ -83,8 +88,7 @@ class ErrorActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        errMessage = intent.getStringExtra("errMessage") ?: return finish()
-        errMessage = "模块版本: $appVersionName ($appVersionCode)\n$errMessage"
+        crashMessage = intent.getStringExtra(KAppCrashUtils.CRASH_MESSAGE) ?: return finish()
 
         setContent {
             FreedomTheme(
@@ -92,16 +96,16 @@ class ErrorActivity : ComponentActivity() {
                 isImmersive = true,
                 isDark = false,
                 followSystem = false,
-            ){
+            ) {
                 Scaffold(
                     topBar = { TopBarView() },
-                ){
-                    BoxWithConstraints(
+                ) {
+                    Box(
                         modifier = Modifier.padding(it),
-                    ){
+                    ) {
                         ScrollableContainer {
                             BasicTextField(
-                                value = errMessage!!,
+                                value = crashMessage!!,
                                 textStyle = Themes.nowTypography.body2,
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                                 readOnly = true,
@@ -122,10 +126,10 @@ class ErrorActivity : ComponentActivity() {
         exitProcess(1)
     }
 
-    private fun shareErrorMessage(text: String) {
+    private fun shareCrashMessage() {
         val intent = Intent(Intent.ACTION_SEND)
         intent.type = "text/plain"
-        intent.putExtra(Intent.EXTRA_TEXT, text)
+        intent.putExtra(Intent.EXTRA_TEXT, "模块版本: $appVersionName ($appVersionCode)\n$crashMessage")
         startActivity(Intent.createChooser(intent, "日志分享"))
     }
 }

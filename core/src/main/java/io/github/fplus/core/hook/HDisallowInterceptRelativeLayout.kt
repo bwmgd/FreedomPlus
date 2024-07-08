@@ -1,19 +1,19 @@
 package io.github.fplus.core.hook
 
-import com.freegang.ktutils.log.KLogCat
-import com.freegang.ktutils.view.forEachChild
-import com.freegang.ktutils.view.postRunning
-import com.freegang.ktutils.view.removeInParent
+import com.freegang.extension.forEachChild
+import com.freegang.extension.postRunning
+import com.freegang.extension.removeInParent
 import de.robv.android.xposed.XC_MethodHook
 import io.github.fplus.core.base.BaseHook
 import io.github.fplus.core.config.ConfigV1
 import io.github.xpler.core.findClass
 import io.github.xpler.core.hookBlockRunning
 import io.github.xpler.core.hookConstructorsAll
-import io.github.xpler.core.wrapper.CallConstructors
+import io.github.xpler.core.log.XplerLog
 import io.github.xpler.core.thisViewGroup
+import io.github.xpler.core.wrapper.CallConstructors
 
-class HDisallowInterceptRelativeLayout : BaseHook<Any>(),
+class HDisallowInterceptRelativeLayout : BaseHook(),
     CallConstructors {
     companion object {
         const val TAG = "HDisallowInterceptRelativeLayout"
@@ -40,22 +40,23 @@ class HDisallowInterceptRelativeLayout : BaseHook<Any>(),
 
     override fun callOnAfterConstructors(params: XC_MethodHook.MethodHookParam) {
         hookBlockRunning(params) {
-            if (config.isImmersive) {
-                thisViewGroup.postRunning {
-                    runCatching {
-                        forEachChild {
-                            // 移除顶部间隔
-                            if (javaClass.name == "android.view.View") {
-                                removeInParent()
-                            }
-                            // 移除底部间隔
-                            if (javaClass.name == "com.ss.android.ugc.aweme.feed.ui.bottom.BottomSpace") {
-                                removeInParent()
-                            }
+            if (!config.isImmersive)
+                return
+
+            thisViewGroup.postRunning {
+                runCatching {
+                    it.forEachChild { child ->
+                        // 移除顶部间隔
+                        if (child.javaClass.name == "android.view.View") {
+                            child.removeInParent()
                         }
-                    }.onFailure {
-                        KLogCat.tagE(TAG, it)
+                        // 移除底部间隔
+                        if (child.javaClass.name == "com.ss.android.ugc.aweme.feed.ui.bottom.BottomSpace") {
+                            child.removeInParent()
+                        }
                     }
+                }.onFailure {
+                    XplerLog.e(it)
                 }
             }
         }

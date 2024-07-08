@@ -1,12 +1,11 @@
 package io.github.fplus.core.hook
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.widget.TextView
-import com.freegang.ktutils.app.contentView
-import com.freegang.ktutils.extension.asOrNull
-import com.freegang.ktutils.log.KLogCat
-import com.freegang.ktutils.reflect.fieldGetFirst
-import com.freegang.ktutils.view.firstOrNull
+import com.freegang.extension.contentView
+import com.freegang.extension.findFieldGetValue
+import com.freegang.extension.firstOrNull
 import com.ss.android.ugc.aweme.base.model.UrlModel
 import com.ss.android.ugc.aweme.emoji.store.view.EmojiBottomSheetDialog
 import com.ss.android.ugc.aweme.emoji.views.EmojiDetailDialog
@@ -16,10 +15,11 @@ import io.github.fplus.core.config.ConfigV1
 import io.github.fplus.core.hook.logic.SaveEmojiLogic
 import io.github.xpler.core.hookBlockRunning
 import io.github.xpler.core.hookClass
+import io.github.xpler.core.log.XplerLog
 import io.github.xpler.core.wrapper.CallMethods
 import kotlinx.coroutines.delay
 
-class HEmojiDetailDialog : BaseHook<EmojiDetailDialog>(), CallMethods {
+class HEmojiDetailDialog : BaseHook(), CallMethods {
     companion object {
         const val TAG = "HEmojiDetailDialog"
     }
@@ -28,30 +28,38 @@ class HEmojiDetailDialog : BaseHook<EmojiDetailDialog>(), CallMethods {
 
     private var urlList: List<String> = emptyList()
 
+    override fun setTargetClass(): Class<*> {
+        return EmojiDetailDialog::class.java
+    }
+
+    @SuppressLint("SetTextI18n")
     override fun onInit() {
         lpparam.hookClass(EmojiBottomSheetDialog::class.java)
             .method("onCreate", Bundle::class.java) {
                 onAfter {
-                    if (!config.isEmoji) return@onAfter
-                    if (!targetClazz.isInstance(thisObject)) return@onAfter  // 非 EmojiDetailDialog, 直接结束
+                    if (!config.isEmojiDownload) return@onAfter
+                    if (!targetClass.isInstance(thisObject)) return@onAfter  // 非 EmojiDetailDialog, 直接结束
 
-                    launch {
+                    singleLaunchMain {
                         delay(500L)
 
                         val emojiDialog = thisObject as EmojiDetailDialog
-                        if (urlList.isEmpty()) return@launch
+                        if (urlList.isEmpty())
+                            return@singleLaunchMain
 
-                        val contentView = emojiDialog.window?.contentView ?: return@launch
-                        contentView.firstOrNull<TextView> {
-                            "${it.text}".contains("添加")
-                        }?.apply {
-                            text = "添加表情 (长按保存)"
-                            isHapticFeedbackEnabled = false
-                            setOnLongClickListener {
-                                SaveEmojiLogic(this@HEmojiDetailDialog, it.context, urlList)
-                                true
+                        val contentView = emojiDialog.window?.contentView ?: return@singleLaunchMain
+                        contentView
+                            .firstOrNull(TextView::class.java) {
+                                "${it.text}".contains("添加")
                             }
-                        }
+                            ?.apply {
+                                text = "添加表情 (长按保存)"
+                                isHapticFeedbackEnabled = false
+                                setOnLongClickListener {
+                                    SaveEmojiLogic(this@HEmojiDetailDialog, it.context, urlList)
+                                    true
+                                }
+                            }
                     }
                 }
             }
@@ -63,13 +71,13 @@ class HEmojiDetailDialog : BaseHook<EmojiDetailDialog>(), CallMethods {
 
     override fun callOnAfterMethods(params: XC_MethodHook.MethodHookParam) {
         hookBlockRunning(params) {
-            if (!config.isEmoji) return
+            if (!config.isEmojiDownload) return
             if (urlList.isNotEmpty()) return
 
-            val urlModel = thisObject.fieldGetFirst(type = UrlModel::class.java)
-            urlList = urlModel?.fieldGetFirst("urlList")?.asOrNull<List<String>>() ?: listOf()
+            val urlModel = thisObject.findFieldGetValue<UrlModel> { type(UrlModel::class.java) }
+            urlList = urlModel?.urlList ?: emptyList()
         }.onFailure {
-            KLogCat.tagE(TAG, it)
+            XplerLog.e(it)
         }
     }
 }

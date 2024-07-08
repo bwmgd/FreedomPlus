@@ -1,11 +1,13 @@
 package io.github.fplus.core.helper
 
 import android.app.Application
-import com.freegang.ktutils.app.appVersionCode
-import com.freegang.ktutils.app.appVersionName
-import com.freegang.ktutils.json.getIntOrDefault
-import com.freegang.ktutils.json.getJSONArrayOrDefault
-import com.freegang.ktutils.json.getStringOrDefault
+import com.freegang.extension.appLastUpdateTime
+import com.freegang.extension.appVersionCode
+import com.freegang.extension.appVersionName
+import com.freegang.extension.getIntOrDefault
+import com.freegang.extension.getJSONArrayOrDefault
+import com.freegang.extension.getLongOrDefault
+import com.freegang.extension.getStringOrDefault
 import com.freegang.ktutils.log.KLogCat
 import com.freegang.ktutils.text.KTextUtils
 import io.github.fplus.core.config.ConfigV1
@@ -16,6 +18,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.luckypray.dexkit.DexKitBridge
 import org.luckypray.dexkit.query.enums.StringMatchType
+import org.luckypray.dexkit.result.ClassData
 import org.luckypray.dexkit.result.ClassDataList
 import org.luckypray.dexkit.result.MethodData
 import org.luckypray.dexkit.result.MethodDataList
@@ -35,23 +38,31 @@ object DexkitBuilder {
     var sideBarNestedScrollViewClazz: Class<*>? = null
     var cornerExtensionsPopupWindowClazz: Class<*>? = null
     var mainBottomTabViewClazz: Class<*>? = null
-    var mainBottomTabItemClazz: Class<*>? = null
+    var mainBottomPhotoTabClazz: Class<*>? = null
     var commentListPageFragmentClazz: Class<*>? = null
+    var commentColorModeViewModeClazz: Class<*>? = null
     var conversationFragmentClazz: Class<*>? = null
     var seekBarSpeedModeBottomContainerClazz: Class<*>? = null
-    var poiCreateInstanceImplClazz: Class<*>? = null
-    var videoPlayerHelperClazz: Class<*>? = null
     var abstractFeedAdapterClazz: Class<*>? = null
     var recommendFeedFetchPresenterClazz: Class<*>? = null
     var fullFeedFollowFetchPresenterClazz: Class<*>? = null
     var detailPageFragmentClazz: Class<*>? = null
-    var emojiApiProxyClazz: Class<*>? = null
     var emojiPopupWindowClazz: Class<*>? = null
     var bottomCtrlBarClazz: Class<*>? = null
+    var chatListRecyclerViewAdapterClazz: Class<*>? = null
+    var chatListRecyclerViewAdapterNewClazz: Class<*>? = null
+    var chatListRecalledHintClazz: Class<*>? = null
     var restartUtilsClazz: Class<*>? = null
+    var longPressEventClazz: Class<*>? = null
+    var doubleClickEventClazz: Class<*>? = null
+    var autoPlayControllerClazz: Class<*>? = null
 
-    // methods
+    var videoViewHolderClazz: Class<*>? = null
     var videoViewHolderMethods: List<Method> = listOf()
+
+    var feedAvatarPresenterClazz: Class<*>? = null
+    var livePhotoClazz: Class<*>? = null
+    var tabLandingClazz: Class<*>? = null
 
     /**
      * 只是为了解决出现的各种稀奇古怪的情况。
@@ -83,9 +94,9 @@ object DexkitBuilder {
         this.app = app
         this.cacheVersion = version
 
-        KLogCat.tagD(TAG, "当前进程: ${lpparam.processName}")
+        KLogCat.tagI(TAG, "当前进程: ${lpparam.processName}")
         if (readCache()) {
-            KLogCat.tagD(TAG, "缓存读取成功!")
+            KLogCat.tagI(TAG, "缓存读取成功!")
             return
         }
         startSearch()
@@ -96,379 +107,593 @@ object DexkitBuilder {
      * Dexkit开始搜索
      */
     private fun startSearch() {
-        KLogCat.tagD(TAG, "Dexkit开始搜索: ${lpparam.appInfo.sourceDir}")
+        KLogCat.tagI(TAG, "Dexkit开始搜索: ${lpparam.appInfo.sourceDir}")
         System.loadLibrary("dexkit")
         DexKitBridge.create(lpparam.appInfo.sourceDir).use { bridge ->
-            searchClass(bridge)
-            searchMethod(bridge)
-        }
-    }
-
-    /**
-     * 搜索类
-     */
-    private fun searchClass(bridge: DexKitBridge) {
-        sideBarNestedScrollViewClazz = bridge.findClass {
-            matcher {
-                className = "com.ss.android.ugc.aweme.sidebar.SideBarNestedScrollView"
-            }
-        }.singleInstance("sideBarNestedScrollView")
-
-        cornerExtensionsPopupWindowClazz = bridge.findClass {
-            matcher {
-                superClass = "android.widget.PopupWindow"
-                fields {
-                    add {
-                        type = "android.view.LayoutInflater"
-                    }
-                    add {
-                        type = "android.app.Dialog"
-                    }
+            val sideBarNestedScrollView = bridge.findClass {
+                matcher {
+                    className = "com.ss.android.ugc.aweme.sidebar.SideBarNestedScrollView"
                 }
-                methods {
-                    add {
-                        paramTypes = listOf("android.widget.PopupWindow")
+            }
+            sideBarNestedScrollViewClazz = sideBarNestedScrollView.instance("sideBarNestedScrollView")
+
+            val cornerExtensionsPopupWindow = bridge.findClass {
+                matcher {
+                    superClass = "android.widget.PopupWindow"
+                    fields {
+                        add {
+                            type = "android.view.LayoutInflater"
+                        }
+                        add {
+                            type = "android.app.Dialog"
+                        }
                     }
-                    add {
-                        paramTypes = listOf("boolean")
-                    }
-                    add {
-                        returnType = "android.view.View"
-                    }
-                    add {
-                        name = "dismiss"
+                    methods {
+                        add {
+                            paramTypes = listOf("android.widget.PopupWindow")
+                        }
+                        add {
+                            paramTypes = listOf("boolean")
+                        }
+                        add {
+                            returnType = "android.view.View"
+                        }
+                        add {
+                            name = "dismiss"
+                        }
                     }
                 }
             }
-        }.singleInstance("coenerExtendsionsPoupWindow")
+            cornerExtensionsPopupWindowClazz = cornerExtensionsPopupWindow.instance("coenerExtendsionsPoupWindow")
 
-        mainBottomTabItemClazz = bridge.findClass {
-            matcher {
-                methods {
-                    add {
-                        name = "getNowImageRes"
-                    }
-                    add {
-                        name = "getOperator"
-                    }
-                    add {
-                        name = "getRefreshTab"
-                        returnType = "android.view.View"
+            val mainBottomPhotoTab = bridge.findClass {
+                matcher {
+                    methods {
+                        add {
+                            name = "getNowImageRes"
+                        }
+                        add {
+                            name = "getOperator"
+                        }
+                        add {
+                            name = "getRefreshTab"
+                            returnType = "android.view.View"
+                        }
                     }
                 }
             }
-        }.singleInstance("mainBottomTabItem")
+            mainBottomPhotoTabClazz = mainBottomPhotoTab.instance("mainBottomPhotoTab")
 
-        commentListPageFragmentClazz = bridge.findClass {
-            matcher {
-                fields {
-                    add {
-                        type = "com.ss.android.ugc.aweme.comment.widget.CommentNestedLayout"
+            val commentListPageFragment = bridge.findClass {
+                matcher {
+                    fields {
+                        add {
+                            type = "com.ss.android.ugc.aweme.comment.widget.CommentNestedLayout"
+                        }
+                        add {
+                            type = "com.ss.android.ugc.aweme.comment.param.VideoCommentPageParam"
+                        }
                     }
-                    add {
-                        type = "com.ss.android.ugc.aweme.comment.param.VideoCommentPageParam"
-                    }
-                }
 
-                methods {
-                    add {
-                        returnType = "com.ss.android.ugc.aweme.comment.constants.CommentColorMode"
-                    }
-                }
+                    // methods {
+                    //     add {
+                    //         returnType = "com.ss.android.ugc.aweme.comment.constants.CommentColorMode"
+                    //     }
+                    // }
 
-                usingStrings = listOf(
-                    "com/ss/android/ugc/aweme/comment/ui/CommentListPageFragment",
-                    "CommentListPageFragment",
-                )
-            }
-        }.singleInstance("commentListPageFragment")
-
-        conversationFragmentClazz = bridge.findClass {
-            matcher {
-                fields {
-                    add {
-                        type = "com.ss.android.ugc.aweme.conversation.CommentConversationLayout"
-                    }
-                    add {
-                        type = "com.ss.android.ugc.aweme.comment.widget.CommentNestedLayout"
-                    }
-                }
-
-                usingStrings = listOf(
-                    "com/ss/android/ugc/aweme/comment/ui/ConversationFragment",
-                    "ConversationFragment",
-                )
-            }
-        }.singleInstance("conversationFragment")
-
-        abstractFeedAdapterClazz = bridge.findClass {
-            matcher {
-                fields {
-                    add {
-                        type = "android.view.LayoutInflater"
-                    }
-                    add {
-                        type = "com.ss.android.ugc.aweme.feed.model.BaseFeedPageParams"
-                    }
-                }
-
-                methods {
-                    add {
-                        name = "getItemPosition"
-                    }
-                    add {
-                        name = "finishUpdate"
-                    }
-                }
-
-                usingStrings {
-                    add("AbstractFeedAdapter aweme.aid = ")
+                    usingStrings = listOf(
+                        "com/ss/android/ugc/aweme/comment/ui/CommentListPageFragment",
+                        "CommentListPageFragment",
+                    )
                 }
             }
-        }.singleInstance("abstractFeedAdapter")
+            commentListPageFragmentClazz = commentListPageFragment.instance("commentListPageFragment")
 
-        recommendFeedFetchPresenterClazz = bridge.findClass {
-            matcher {
-                methods {
-                    add {
-                        name = "onSuccess"
-                    }
-                }
-                addUsingString("com.ss.android.ugc.aweme.feed.presenter.RecommendFeedFetchPresenter")
-                addUsingString("enter_from")
-                addUsingString("homepage_hot")
-            }
-        }.singleInstance("recommendFeedFetchPresenter")
+            val commentColorModeViewMode = bridge.findClass {
+                matcher {
+                    superClass = "androidx.lifecycle.ViewModel"
+                    methods {
+                        add {
+                            returnType = "com.ss.android.ugc.aweme.comment.constants.CommentColorMode"
+                        }
 
-        fullFeedFollowFetchPresenterClazz = bridge.findClass {
-            matcher {
-                methods {
-                    add {
-                        name = "onSuccess"
-                    }
-                }
-                addUsingString("com.ss.android.ugc.aweme.feed.presenter.FullFeedFollowFetchPresenter")
-                addUsingString("enter_from")
-                addUsingString("homepage_follow")
-            }
-        }.singleInstance("fullFeedFollowFetchPresenter")
-
-        emojiPopupWindowClazz = bridge.findClass {
-            matcher {
-                methods {
-                    add {
-                        modifiers = Modifier.PRIVATE
-                        returnType = "com.ss.android.ugc.aweme.base.ui.RemoteImageView"
-                    }
-                    add {
-                        modifiers = Modifier.PRIVATE
-                        returnType = "com.bytedance.ies.dmt.ui.widget.DmtTextView"
-                    }
-                    add {
-                        modifiers = Modifier.PUBLIC
-                        paramTypes = listOf("android.content.Context")
-                    }
-                    add {
-                        modifiers = Modifier.PRIVATE
-                        paramTypes = listOf("com.ss.android.ugc.aweme.emoji.base.BaseEmoji")
-                    }
-                    add {
-                        modifiers = Modifier.PRIVATE
-                        paramTypes = listOf(
-                            "com.ss.android.ugc.aweme.emoji.base.BaseEmoji",
-                            "com.ss.android.ugc.aweme.base.ui.RemoteImageView",
-                        )
+                        add {
+                            paramTypes = listOf("com.ss.android.ugc.aweme.comment.constants.CommentColorMode")
+                        }
                     }
                 }
             }
-        }.singleInstance("emojiPopupWindow")
+            commentColorModeViewModeClazz = commentColorModeViewMode.instance("commentColorModeViewMode")
 
-        seekBarSpeedModeBottomContainerClazz = bridge.findClass {
-            // findFirst = true
-            matcher {
-                methods {
-                    add {
-                        name = "getMSpeedText"
-                        returnType = "android.widget.TextView"
+            val conversationFragment = bridge.findClass {
+                matcher {
+                    fields {
+                        add {
+                            type = "com.ss.android.ugc.aweme.conversation.CommentConversationLayout"
+                        }
+                        add {
+                            type = "com.ss.android.ugc.aweme.comment.widget.CommentNestedLayout"
+                        }
                     }
-                    add {
-                        name = "getMBottomLayout"
-                        returnType = "android.view.View"
+
+                    usingStrings = listOf(
+                        "com/ss/android/ugc/aweme/comment/ui/ConversationFragment",
+                        "ConversationFragment",
+                    )
+                }
+            }
+            conversationFragmentClazz = conversationFragment.instance("conversationFragment")
+
+            val abstractFeedAdapter = bridge.findClass {
+                matcher {
+                    fields {
+                        add {
+                            type = "android.view.LayoutInflater"
+                        }
+                        add {
+                            type = "com.ss.android.ugc.aweme.feed.model.BaseFeedPageParams"
+                        }
                     }
-                    add {
-                        name = "getLoadingProgressBar"
-                        returnType = "com.ss.android.ugc.aweme.feed.widget.LineProgressBar"
+
+                    methods {
+                        add {
+                            name = "getItemPosition"
+                        }
+                        add {
+                            name = "finishUpdate"
+                        }
+                    }
+
+                    usingStrings {
+                        add("AbstractFeedAdapter aweme.aid = ")
                     }
                 }
             }
-        }.singleInstance("seekBarSpeedModeBottomContainer")
+            abstractFeedAdapterClazz = abstractFeedAdapter.instance("abstractFeedAdapter")
 
-        poiCreateInstanceImplClazz = bridge.findClass {
-            matcher {
-                className = "com.ss.android.ugc.aweme.poi.PoiCreateInstanceImpl"
-            }
-        }.singleInstance("poiCreateInstanceImpl")
-
-        emojiApiProxyClazz = bridge.findClass {
-            matcher {
-                fields {
-                    add {
-                        type = "com.ss.android.ugc.aweme.emoji.utils.EmojiApi"
+            val recommendFeedFetchPresenter = bridge.findClass {
+                matcher {
+                    methods {
+                        add {
+                            name = "onSuccess"
+                        }
                     }
-                    add {
-                        type = "com.ss.android.ugc.aweme.emoji.store.EmojiShopApi"
-                    }
-                }
-
-                methods {
-                    add {
-                        returnType = "com.ss.android.ugc.aweme.emoji.utils.EmojiApi"
-                    }
-                    add {
-                        returnType = "com.ss.android.ugc.aweme.emoji.store.EmojiShopApi"
-                    }
-                }
-
-                usingStrings {
-                    add("https://", StringMatchType.Equals)
-                    add("/aweme/v1/", StringMatchType.Equals)
+                    addUsingString("com.ss.android.ugc.aweme.feed.presenter.RecommendFeedFetchPresenter")
+                    addUsingString("enter_from")
+                    addUsingString("homepage_hot")
                 }
             }
-        }.singleInstance("emojiApiProxy")
+            recommendFeedFetchPresenterClazz =
+                recommendFeedFetchPresenter.instance("recommendFeedFetchPresenter")
 
-        mainBottomTabViewClazz = bridge.findClass {
-            matcher {
-                superClass = "android.widget.FrameLayout"
-
-                fields {
-                    add {
-                        type = "com.bytedance.dux.image.DuxImageView"
+            val fullFeedFollowFetchPresenter = bridge.findClass {
+                matcher {
+                    methods {
+                        add {
+                            name = "onSuccess"
+                        }
                     }
-                }
-
-                methods {
-                    add {
-                        name = "getBottomColor"
-                    }
-                    add {
-                        name = "setBackgroundDrawable"
-                        paramTypes = listOf("android.graphics.drawable.Drawable")
-                    }
-                    add {
-                        name = "setBackgroundResource"
-                    }
-                    add {
-                        name = "setBackgroundColor"
-                    }
-                    add {
-                        name = "setVisibility"
-                    }
-                    add {
-                        name = "setAlpha"
-                    }
-                }
-
-                usingStrings {
-                    add("alpha", StringMatchType.Equals)
-                    add("translationY", StringMatchType.Equals)
-                    add("MainBottomTabView", StringMatchType.Equals)
+                    addUsingString("com.ss.android.ugc.aweme.feed.presenter.FullFeedFollowFetchPresenter")
+                    addUsingString("enter_from")
+                    addUsingString("homepage_follow")
                 }
             }
-        }.singleInstance("mainBottomTabView")
+            fullFeedFollowFetchPresenterClazz =
+                fullFeedFollowFetchPresenter.instance("fullFeedFollowFetchPresenter")
 
-        bottomCtrlBarClazz = bridge.findClass {
-            searchPackages("X")
-            matcher {
-                superClass = "android.widget.FrameLayout"
-                fields {
-                    add {
-                        annotations {
-                            add {
-                                type = "dalvik.annotation.Signature"
-                                addElement {
-                                    name = "value"
-                                    arrayValue {
-                                        addString("IPauseCtrlAction")
+            val emojiPopupWindow = bridge.findClass {
+                matcher {
+                    methods {
+                        add {
+                            modifiers = Modifier.PRIVATE
+                            returnType = "com.ss.android.ugc.aweme.base.ui.RemoteImageView"
+                        }
+                        add {
+                            modifiers = Modifier.PRIVATE
+                            returnType = "com.bytedance.ies.dmt.ui.widget.DmtTextView"
+                        }
+                        add {
+                            modifiers = Modifier.PUBLIC
+                            paramTypes = listOf("android.content.Context")
+                        }
+                        add {
+                            modifiers = Modifier.PRIVATE
+                            paramTypes = listOf("com.ss.android.ugc.aweme.emoji.base.BaseEmoji")
+                        }
+                        add {
+                            modifiers = Modifier.PRIVATE
+                            paramTypes = listOf(
+                                "com.ss.android.ugc.aweme.emoji.base.BaseEmoji",
+                                "com.ss.android.ugc.aweme.base.ui.RemoteImageView",
+                            )
+                        }
+                    }
+                }
+            }
+            emojiPopupWindowClazz = emojiPopupWindow.instance("emojiPopupWindow")
+
+            val seekBarSpeedModeBottomContainer = bridge.findClass {
+                // findFirst = true
+                matcher {
+                    methods {
+                        add {
+                            name = "getMSpeedText"
+                            returnType = "android.widget.TextView"
+                        }
+                        add {
+                            name = "getMBottomLayout"
+                            returnType = "android.view.View"
+                        }
+                        add {
+                            name = "getLoadingProgressBar"
+                            returnType = "com.ss.android.ugc.aweme.feed.widget.LineProgressBar"
+                        }
+                    }
+                }
+            }
+            seekBarSpeedModeBottomContainerClazz =
+                seekBarSpeedModeBottomContainer.instance("seekBarSpeedModeBottomContainer")
+
+            val mainBottomTabView = bridge.findClass {
+                matcher {
+                    superClass = "android.widget.FrameLayout"
+
+                    fields {
+                        add {
+                            type = "com.bytedance.dux.image.DuxImageView"
+                        }
+                    }
+
+                    methods {
+                        add {
+                            name = "getBottomColor"
+                        }
+                        add {
+                            name = "setBackgroundDrawable"
+                            paramTypes = listOf("android.graphics.drawable.Drawable")
+                        }
+                        add {
+                            name = "setBackgroundResource"
+                        }
+                        add {
+                            name = "setBackgroundColor"
+                        }
+                        add {
+                            name = "setVisibility"
+                        }
+                        add {
+                            name = "setAlpha"
+                        }
+                    }
+
+                    usingStrings {
+                        add("alpha", StringMatchType.Equals)
+                        add("translationY", StringMatchType.Equals)
+                        add("MainBottomTabView", StringMatchType.Equals)
+                    }
+                }
+            }
+            mainBottomTabViewClazz = mainBottomTabView.instance("mainBottomTabView")
+
+            val bottomCtrlBar = bridge.findClass {
+                searchPackages("X")
+                matcher {
+                    superClass = "android.widget.FrameLayout"
+                    fields {
+                        add {
+                            annotations {
+                                add {
+                                    type = "dalvik.annotation.Signature"
+                                    addElement {
+                                        name = "value"
+                                        arrayValue {
+                                            addString("IPauseCtrlAction")
+                                        }
                                     }
                                 }
                             }
                         }
                     }
-                }
 
-            }
-        }.singleInstance("bottomCtrlBar")
-
-        restartUtilsClazz = bridge.findClass {
-            searchPackages("X")
-            matcher {
-                methods {
-                    add {
-                        paramTypes = listOf("android.content.Context")
-                        usingNumbers = listOf(0x10008000)
-                    }
-                }
-                usingStrings {
-                    add("System.exit returned normally, while it was supposed to halt JVM.")
                 }
             }
-        }.singleInstance("restartUtils")
+            bottomCtrlBarClazz = bottomCtrlBar.instance("bottomCtrlBar")
 
-        val findMaps = bridge.batchFindClassUsingStrings {
-            addSearchGroup {
-                groupName = "videoPlayerHelper"
-                usingStrings = listOf(
-                    "isDoubleClickResExist >>> channel empty",
-                    "当前无网络，暂不可用",
-                    "暂不支持点赞操作",
-                )
-            }
-            addSearchGroup {
-                groupName = "detailPageFragment"
-                usingStrings = listOf(
-                    "a1128.b7947",
-                    "com/ss/android/ugc/aweme/detail/ui/DetailPageFragment",
-                    "DetailActOtherNitaView",
-                )
-            }
-        }
-        DexkitBuilder.videoPlayerHelperClazz = findMaps.singleInstance("videoPlayerHelper")
-        DexkitBuilder.detailPageFragmentClazz = findMaps.singleInstance("detailPageFragment")
-    }
-
-    /**
-     * 搜索方法
-     */
-    private fun searchMethod(bridge: DexKitBridge) {
-        videoViewHolderMethods = bridge.findClass {
-            matcher {
-                className = "com.ss.android.ugc.aweme.feed.adapter.VideoViewHolder"
-            }
-        }.findMethod {
-            matcher {
-                usingFields {
-                    add {
-                        field {
-                            type = "com.ss.android.ugc.aweme.feed.ui.PenetrateTouchRelativeLayout"
+            val chatListRecyclerViewAdapter = bridge.findClass {
+                // searchPackages("X")
+                matcher {
+                    fields {
+                        add {
+                            type = "com.ss.android.ugc.aweme.im.sdk.chat.SessionInfo"
+                        }
+                        add {
+                            type = "androidx.recyclerview.widget.RecyclerView"
+                        }
+                        add {
+                            type = "androidx.recyclerview.widget.RecyclerView\$ItemAnimator"
+                        }
+                        add {
+                            type = "java.util.Set"
+                        }
+                        add {
+                            type = "java.util.Set"
                         }
                     }
-                    add {
-                        field {
+
+                    methods {
+                        add {
+                            name = "onBindViewHolder"
+                            paramTypes = listOf(
+                                "androidx.recyclerview.widget.RecyclerView\$ViewHolder",
+                                "int",
+                                "java.util.List",
+                            )
+                        }
+                    }
+                }
+            }
+            chatListRecyclerViewAdapterClazz = chatListRecyclerViewAdapter.instance("chatListRecyclerViewAdapter")
+
+            val chatListRecyclerViewAdapterNew = bridge.findClass {
+                // searchPackages("X")
+                matcher {
+                    addField {
+                        type = "com.ss.android.ugc.aweme.im.sdk.chat.SessionInfo"
+                    }
+
+                    addMethod {
+                        returnType = "com.ss.android.ugc.aweme.rips.InjectionAware"
+                    }
+
+                    addMethod {
+                        name = "getItemId"
+                    }
+
+                    addMethod {
+                        name = "getItemCount"
+                    }
+
+                    addMethod {
+                        name = "onCreateViewHolder"
+                    }
+                }
+            }
+            chatListRecyclerViewAdapterNewClazz = chatListRecyclerViewAdapterNew.instance("chatListRecyclerViewAdapterNew")
+
+            val chatListRecalledHint = bridge.findClass {
+                matcher {
+                    fields {
+                        add {
+                            type = "android.widget.TextView"
+                        }
+
+                        add {
+                            type = "com.ss.android.ugc.aweme.views.InterceptTouchLinearLayout"
+                        }
+
+                        add {
+                            type {
+                                superClass = "androidx.lifecycle.ViewModel"
+                            }
+                        }
+                    }
+
+                    methods {
+                        add {
+                            name = "getFastEventBusSubscriberClass"
+                            returnType = "java.lang.Class"
+                        }
+
+                        add {
+                            paramTypes = listOf(
+                                null,
+                                "int",
+                                "java.util.List"
+                            )
+                        }
+                    }
+                }
+            }
+            chatListRecalledHintClazz = chatListRecalledHint.instance("chatListRecalledHint")
+
+            val restartUtils = bridge.findClass {
+                searchPackages("X")
+                matcher {
+                    methods {
+                        add {
+                            paramTypes = listOf("android.content.Context")
+                            usingNumbers = listOf(0x10008000)
+                        }
+                    }
+                    usingStrings {
+                        add("System.exit returned normally, while it was supposed to halt JVM.")
+                    }
+                }
+            }
+            restartUtilsClazz = restartUtils.instance("restartUtils")
+
+            val longPressEvent = bridge.findClass {
+                matcher {
+                    interfaces {
+                        add {
+                            addAnnotation {
+                                addElement {
+                                    name = "value"
+                                    value {
+                                        classValue {
+                                            this.className = "com.ss.android.ugc.aweme.feed.ui.LongPressLayout"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    addField {
+                        type = "com.ss.android.ugc.aweme.feed.model.Aweme"
+                    }
+                    addField {
+                        type = "android.content.Context"
+                    }
+                }
+            }
+            longPressEventClazz = longPressEvent.instance("longPressEvent")
+
+            val doubleClickEvent = bridge.findClass {
+                matcher {
+                    fieldCount(1)
+                    methods {
+                        add {
+                            paramTypes = listOf("boolean")
+                        }
+                        add {
+                            paramTypes = listOf(
+                                "android.view.View",
+                                "android.view.MotionEvent",
+                                "android.view.MotionEvent",
+                                "android.view.MotionEvent",
+                            )
+                        }
+                    }
+                }
+            }
+            doubleClickEventClazz = doubleClickEvent.instance("doubleClickEvent")
+
+            val autoPlayController = bridge.findClass {
+                matcher {
+                    fields {
+                        add {
+                            type = "com.ss.android.ugc.aweme.kiwi.viewmodel.QLiveData"
+                        }
+                    }
+
+                    methods {
+                        add {
+                            returnType = "com.ss.android.ugc.aweme.kiwi.viewmodel.QLiveData"
+                        }
+                    }
+
+                    usingStrings {
+                        add("normal")
+                        add("swipe")
+                        add("auto_play_key")
+                    }
+                }
+            }
+            autoPlayControllerClazz = autoPlayController.instance("autoPlayController")
+
+            val videoViewHolder = bridge.findClass {
+                matcher {
+                    className = "com.ss.android.ugc.aweme.feed.adapter.VideoViewHolder"
+                }
+            }
+            videoViewHolderClazz = videoViewHolder.instance("videoViewHolder")
+            videoViewHolderMethods = videoViewHolder.findMethod {
+                matcher {
+                    usingFields {
+                        add {
+                            field {
+                                type = "com.ss.android.ugc.aweme.feed.ui.PenetrateTouchRelativeLayout"
+                            }
+                        }
+                        add {
+                            field {
+                                type = "com.ss.android.ugc.aweme.feed.model.VideoItemParams"
+                            }
+                        }
+                    }
+
+                    invokeMethods {
+                        add {
+                            name = "isCleanMode"
+                        }
+                        add {
+                            name = "getContext"
+                        }
+                    }
+                }
+            }.instanceAll("videoViewHolderMethods")
+
+            val livePhoto = bridge.findClass {
+                matcher {
+                    fields {
+                        add {
+                            type = "com.ss.android.ugc.aweme.feed.model.VideoItemParams"
+                        }
+                        add {
+                            type = "com.bytedance.ies.dmt.ui.widget.DmtTextView"
+                        }
+                        add {
+                            type = "android.widget.ImageView"
+                        }
+                    }
+                    methods {
+                        add {
+                            paramTypes = listOf("com.ss.android.ugc.aweme.kiwi.model.QModel")
+                        }
+                        add {
+                            paramTypes = listOf("com.ss.android.ugc.aweme.feed.model.Aweme")
+                        }
+                    }
+                }
+            }
+            livePhotoClazz = livePhoto.instance("livePhoto")
+
+            val tabLanding = bridge.findClass {
+                matcher {
+                    fields {
+                        add {
+                            type =
+                                "com.ss.android.ugc.aweme.feed.plato.business.mainarchitecture.tablandguide.TabLandGuideTriggerEventType"
+                        }
+                        add {
+                            type = "com.bytedance.dux.image.DuxImageView"
+                        }
+
+                        add {
                             type = "com.ss.android.ugc.aweme.feed.model.VideoItemParams"
                         }
                     }
-                }
-
-                invokeMethods {
-                    add {
-                        name = "isCleanMode"
+                    methods {
+                        add {
+                            paramTypes = listOf("com.ss.android.ugc.aweme.feed.model.VideoItemParams")
+                        }
                     }
-                    add {
-                        name = "getContext"
-                    }
+                    usingStrings = listOf("TabLandGuidePresenter", "tabLandingActionBtn")
                 }
             }
-        }.allMethodInstance("videoViewHolderMethods")
+            tabLandingClazz = tabLanding.instance("tabLanding")
+
+
+            //
+            // by using string
+            val findMaps = bridge.batchFindClassUsingStrings {
+                addSearchGroup {
+                    groupName = "detailPageFragment"
+                    usingStrings = listOf(
+                        "a1128.b7947",
+                        "com/ss/android/ugc/aweme/detail/ui/DetailPageFragment",
+                        "DetailActOtherNitaView",
+                    )
+                }
+
+                addSearchGroup {
+                    groupName = "feedAvatarPresenter"
+                    usingStrings = listOf(
+                        "com/ss/android/ugc/aweme/feed/quick/presenter/FeedAvatarPresenter",
+                        "当前无网络，暂不可用",
+                        "follow",
+                        "click_hea",
+                    )
+                }
+            }
+
+            val detailPageFragment = findMaps["detailPageFragment"]
+            detailPageFragmentClazz = detailPageFragment.instance("detailPageFragment")
+
+            val feedAvatarPresenter = findMaps["feedAvatarPresenter"]
+            feedAvatarPresenterClazz = feedAvatarPresenter.instance("feedAvatarPresenter")
+        }
     }
 
     /**
@@ -479,9 +704,19 @@ object DexkitBuilder {
 
         // version
         val version = cache.getIntOrDefault("version")
-        val appVersion = cache.getStringOrDefault("appVersion")
+        val appVersionName = cache.getStringOrDefault("appVersionName")
+        val appVersionCode = cache.getLongOrDefault("appVersionCode", 0)
+        val appLastUpdateTime = cache.getLongOrDefault("appLastUpdateTime")
 
-        if (appVersion.compareTo("${app!!.appVersionName}_${app!!.appVersionCode}") != 0) {
+        if (appVersionName != app!!.appVersionName) {
+            return false
+        }
+
+        if (appVersionCode != app!!.appVersionCode) {
+            return false
+        }
+
+        if (appLastUpdateTime != app!!.appLastUpdateTime) {
             return false
         }
 
@@ -492,7 +727,7 @@ object DexkitBuilder {
         readClassCache(cache)
         readMethodsCache(cache)
 
-        KLogCat.tagD(TAG, cache.toString(2))
+        KLogCat.tagI(TAG, cache.toString(2))
 
         return true
     }
@@ -507,20 +742,28 @@ object DexkitBuilder {
         sideBarNestedScrollViewClazz = classCache.getStringOrDefault("sideBarNestedScrollView").loadOrFindClass()
         cornerExtensionsPopupWindowClazz = classCache.getStringOrDefault("coenerExtendsionsPoupWindow").loadOrFindClass()
         mainBottomTabViewClazz = classCache.getStringOrDefault("mainBottomTabView").loadOrFindClass()
-        mainBottomTabItemClazz = classCache.getStringOrDefault("mainBottomTabItem").loadOrFindClass()
+        mainBottomPhotoTabClazz = classCache.getStringOrDefault("mainBottomPhotoTab").loadOrFindClass()
         commentListPageFragmentClazz = classCache.getStringOrDefault("commentListPageFragment").loadOrFindClass()
+        commentColorModeViewModeClazz = classCache.getStringOrDefault("commentColorModeViewMode").loadOrFindClass()
         conversationFragmentClazz = classCache.getStringOrDefault("conversationFragment").loadOrFindClass()
         seekBarSpeedModeBottomContainerClazz = classCache.getStringOrDefault("seekBarSpeedModeBottomContainer").loadOrFindClass()
-        poiCreateInstanceImplClazz = classCache.getStringOrDefault("poiCreateInstanceImpl").loadOrFindClass()
-        videoPlayerHelperClazz = classCache.getStringOrDefault("videoPlayerHelper").loadOrFindClass()
         abstractFeedAdapterClazz = classCache.getStringOrDefault("abstractFeedAdapter").loadOrFindClass()
         recommendFeedFetchPresenterClazz = classCache.getStringOrDefault("recommendFeedFetchPresenter").loadOrFindClass()
         fullFeedFollowFetchPresenterClazz = classCache.getStringOrDefault("fullFeedFollowFetchPresenter").loadOrFindClass()
         emojiPopupWindowClazz = classCache.getStringOrDefault("emojiPopupWindow").loadOrFindClass()
         detailPageFragmentClazz = classCache.getStringOrDefault("detailPageFragment").loadOrFindClass()
-        emojiApiProxyClazz = classCache.getStringOrDefault("emojiApiProxy").loadOrFindClass()
         bottomCtrlBarClazz = classCache.getStringOrDefault("bottomCtrlBar").loadOrFindClass()
+        chatListRecyclerViewAdapterClazz = classCache.getStringOrDefault("chatListRecyclerViewAdapter").loadOrFindClass()
+        chatListRecyclerViewAdapterNewClazz = classCache.getStringOrDefault("chatListRecyclerViewAdapterNew").loadOrFindClass()
+        chatListRecalledHintClazz = classCache.getStringOrDefault("chatListRecalledHint").loadOrFindClass()
         restartUtilsClazz = classCache.getStringOrDefault("restartUtils").loadOrFindClass()
+        longPressEventClazz = classCache.getStringOrDefault("longPressEvent").loadOrFindClass()
+        doubleClickEventClazz = classCache.getStringOrDefault("doubleClickEvent").loadOrFindClass()
+        videoViewHolderClazz = classCache.getStringOrDefault("videoViewHolder").loadOrFindClass()
+        autoPlayControllerClazz = classCache.getStringOrDefault("autoPlayController").loadOrFindClass()
+        livePhotoClazz = classCache.getStringOrDefault("livePhoto").loadOrFindClass()
+        tabLandingClazz = classCache.getStringOrDefault("tabLanding").loadOrFindClass()
+        feedAvatarPresenterClazz = classCache.getStringOrDefault("feedAvatarPresenter").loadOrFindClass()
     }
 
     /**
@@ -539,7 +782,9 @@ object DexkitBuilder {
     private fun saveCache() {
         // version
         cacheJson.put("version", "$cacheVersion")
-        cacheJson.put("appVersion", "${app!!.appVersionName}_${app!!.appVersionCode}")
+        cacheJson.put("appVersionName", app!!.appVersionName)
+        cacheJson.put("appVersionCode", app!!.appVersionCode)
+        cacheJson.put("appLastUpdateTime", app!!.appLastUpdateTime)
 
         // cache
         cacheJson.put("class", classCacheJson)
@@ -548,27 +793,23 @@ object DexkitBuilder {
     }
 
     // 拓展方法
-    private fun Map<String, ClassDataList>.singleInstance(key: String): Class<*>? {
-        val classData = this[key]?.singleOrNull()
-        KLogCat.tagD(TAG, "found-class[$key]: ${classData?.name}")
-        classCacheJson.put(key, "${classData?.name}")
-        return classData?.getInstance(lpparam.classLoader)
+    private fun ClassDataList?.instance(label: String): Class<*>? {
+        return this?.singleOrNull().instance(label)
     }
 
-    private fun ClassDataList.singleInstance(label: String): Class<*>? {
-        val classData = this.singleOrNull()
-        KLogCat.tagD(TAG, "found-class[$label]: ${classData?.name}")
-        classCacheJson.put(label, "${classData?.name}")
-        return classData?.getInstance(lpparam.classLoader)
+    private fun ClassData?.instance(label: String): Class<*>? {
+        KLogCat.tagI(TAG, "found-class[$label]: ${this?.name}")
+        classCacheJson.put(label, "${this?.name}")
+        return this?.getInstance(lpparam.classLoader)
     }
 
-    private fun MethodDataList.allMethodInstance(label: String): List<Method> {
+    private fun MethodDataList.instanceAll(label: String): List<Method> {
         val array = JSONArray()
         methodsCacheJson.put(label, array)
         return this.filter {
             it.isMethod
         }.map {
-            KLogCat.tagD(TAG, "found-method[$label]: $it")
+            KLogCat.tagI(TAG, "found-method[$label]: $it")
             array.put(it.toJson())
             it.getMethodInstance(lpparam.classLoader)
         }
@@ -590,7 +831,10 @@ object DexkitBuilder {
                 val className = json.getStringOrDefault("className")
                 val methodName = json.getStringOrDefault("methodName")
                 val paramTypeNames = json.getStringOrDefault("paramTypeNames").split(",")
-                val method = lpparam.findMethod(className, methodName, *paramTypeNames.toTypedArray())
+                val method = lpparam
+                    .findClass(className)
+                    .findMethod(methodName, *paramTypeNames.toTypedArray())
+                    ?: return@runCatching
                 methods.add(method)
             }
         }

@@ -18,13 +18,14 @@ import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 
 open class BaseActivity : Activity(),
-    IXplerActivity,
+    IPluginActivity,
     ContextAware,
     LifecycleOwner,
     ViewModelStoreOwner,
@@ -146,8 +147,9 @@ open class BaseActivity : Activity(),
     }
 
     private fun initViewTreeOwners() {
+        window!!.decorView.setViewTreeViewModelStoreOwner(this)
         window!!.decorView.setViewTreeLifecycleOwner(this)
-        window!!.decorView.setViewTreeOnBackPressedDispatcherOwner(this)
         window!!.decorView.setViewTreeSavedStateRegistryOwner(this)
+        window!!.decorView.setViewTreeOnBackPressedDispatcherOwner(this)
     }
 }

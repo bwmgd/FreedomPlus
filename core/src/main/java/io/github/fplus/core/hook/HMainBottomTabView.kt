@@ -2,8 +2,8 @@ package io.github.fplus.core.hook
 
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
-import com.freegang.ktutils.view.forEachChild
-import com.freegang.ktutils.view.parentView
+import com.freegang.extension.forEachChild
+import com.freegang.extension.parentView
 import de.robv.android.xposed.XC_MethodHook
 import io.github.fplus.core.base.BaseHook
 import io.github.fplus.core.config.ConfigV1
@@ -14,7 +14,7 @@ import io.github.xpler.core.hookBlockRunning
 import io.github.xpler.core.log.XplerLog
 import io.github.xpler.core.thisViewGroup
 
-class HMainBottomTabView : BaseHook<Any>() {
+class HMainBottomTabView : BaseHook() {
     companion object {
         const val TAG = "HMainBottomTabView"
     }
@@ -42,7 +42,7 @@ class HMainBottomTabView : BaseHook<Any>() {
             if (config.isImmersive) {
                 thisViewGroup.parentView?.background = ColorDrawable(Color.TRANSPARENT)
                 thisViewGroup.forEachChild {
-                    background = ColorDrawable(Color.TRANSPARENT)
+                    it.background = ColorDrawable(Color.TRANSPARENT)
                 }
             }
         }.onFailure {

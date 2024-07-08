@@ -3,40 +3,36 @@ package io.github.fplus.core.hook
 import android.view.View
 import android.widget.ImageView
 import androidx.core.view.isVisible
+import com.freegang.extension.forEachChild
 import com.freegang.ktutils.app.KToastUtils
-import com.freegang.ktutils.log.KLogCat
-import com.freegang.ktutils.view.forEachChild
 import de.robv.android.xposed.XC_MethodHook
 import io.github.fplus.core.base.BaseHook
 import io.github.fplus.core.config.ConfigV1
 import io.github.fplus.core.helper.DexkitBuilder
 import io.github.xpler.core.entity.NoneHook
+import io.github.xpler.core.entity.OnAfter
 import io.github.xpler.core.hookBlockRunning
+import io.github.xpler.core.log.XplerLog
 import io.github.xpler.core.thisView
-import io.github.xpler.core.wrapper.CallMethods
 
 
-class HMainBottomTabItem : BaseHook<Any>(),
-    CallMethods {
+class HMainBottomPhotoTab : BaseHook() {
     companion object {
-        const val TAG = "HMainBottomTabItem"
+        const val TAG = "HMainBottomPhotoTab"
     }
 
     val config get() = ConfigV1.get()
 
     override fun setTargetClass(): Class<*> {
-        return DexkitBuilder.mainBottomTabItemClazz ?: NoneHook::class.java
+        return DexkitBuilder.mainBottomPhotoTabClazz ?: NoneHook::class.java
     }
 
-    override fun callOnBeforeMethods(params: XC_MethodHook.MethodHookParam) {
-
-    }
-
-    override fun callOnAfterMethods(params: XC_MethodHook.MethodHookParam) {
+    @OnAfter
+    fun currentIndexAfter(params: XC_MethodHook.MethodHookParam, int: Int) {
         hookBlockRunning(params) {
             isHidePhotoButton(thisView)
         }.onFailure {
-            KLogCat.tagE(TAG, it)
+            XplerLog.e(it)
         }
     }
 
@@ -45,8 +41,8 @@ class HMainBottomTabItem : BaseHook<Any>(),
             return
         }
 
-        view.forEachChild {
-            if ("$contentDescription".contains(Regex("拍摄|道具"))) {
+        view.forEachChild { child ->
+            if ("${child.contentDescription}".contains(Regex("拍摄|道具"))) {
                 // 隐藏按钮
                 if (config.photoButtonType == 2) {
                     view.isVisible = false
@@ -54,10 +50,10 @@ class HMainBottomTabItem : BaseHook<Any>(),
                 }
 
                 // 占位按钮, 移除加号图标
-                if (this is ImageView) {
-                    setImageDrawable(null)
-                    background = null
-                    foreground = null
+                if (child is ImageView) {
+                    child.setImageDrawable(null)
+                    child.background = null
+                    child.foreground = null
                 }
 
                 // 允许拍摄直接结束逻辑
@@ -68,10 +64,10 @@ class HMainBottomTabItem : BaseHook<Any>(),
 
                 // 不允许拍摄
                 view.setOnClickListener {
-                    KToastUtils.show(it.context, "已禁止拍摄")
+                    KToastUtils.show(child.context, "已禁止拍摄")
                 }
                 view.setOnLongClickListener {
-                    KToastUtils.show(it.context, "已禁止拍摄")
+                    KToastUtils.show(child.context, "已禁止拍摄")
                     true
                 }
             }

@@ -14,19 +14,19 @@ import android.view.View
 import android.widget.FrameLayout
 import android.widget.ProgressBar
 import android.widget.TextView
-import android.widget.Toast
 import androidx.annotation.DrawableRes
 import androidx.compose.runtime.Composable
 import androidx.core.view.isVisible
+import com.freegang.extension.isDarkMode
 import com.freegang.ktutils.app.IProgressNotification
 import com.freegang.ktutils.app.KNotifiUtils
 import com.freegang.ktutils.app.KToastUtils
-import com.freegang.ktutils.app.isDarkMode
 import io.github.fplus.core.R
 import io.github.fplus.core.databinding.DialogChoiceLayoutBinding
 import io.github.fplus.core.databinding.DialogInputChoiceLayoutBinding
 import io.github.fplus.core.databinding.DialogMessageLayoutBinding
 import io.github.fplus.core.databinding.DialogProgressLayoutBinding
+import io.github.fplus.core.ui.ModuleTheme
 import io.github.fplus.core.ui.dialog.XplerDialogWrapper
 import io.github.fplus.core.view.KDialog
 import io.github.fplus.core.view.adapter.DialogChoiceAdapter
@@ -36,6 +36,7 @@ import io.github.xpler.core.inflateModuleView
 import io.github.xpler.core.log.XplerLog
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -43,14 +44,17 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.coroutines.CoroutineContext
 
-abstract class BaseHook<T>() : HookEntity<T>() {
+abstract class BaseHook : HookEntity() {
     protected val handler: Handler = Handler(Looper.getMainLooper())
     private val mainScope: CoroutineScope = CoroutineScope(Dispatchers.Main)
-    private var toast: Toast? = null
+    private var singleMainJob: MutableMap<String, Job?> = mutableMapOf()
+    private var singleIOJob: MutableMap<String, Job?> = mutableMapOf()
+
     private var kDialog: KDialog? = null
 
-    fun launch(block: suspend CoroutineScope.() -> Unit): Job {
+    private fun launch(context: CoroutineContext, block: suspend CoroutineScope.() -> Unit): Job {
         val exceptionHandler = CoroutineExceptionHandler { coroutineContext, throwable ->
             if (throwable is CancellationException) {
                 throwable.printStackTrace()
@@ -63,17 +67,42 @@ abstract class BaseHook<T>() : HookEntity<T>() {
                 coroutineContext.cancelChildren()
             }
         }
-        val job = mainScope.launch(exceptionHandler) {
+        val job = mainScope.launch(context + exceptionHandler) {
             try {
                 block.invoke(this)
             } catch (e: CancellationException) {
                 e.printStackTrace()
             } catch (e: Exception) {
-                e.printStackTrace()
                 XplerLog.e(e)
             }
         }
         return job
+    }
+
+    fun launchMain(block: suspend CoroutineScope.() -> Unit): Job {
+        return launch(Dispatchers.Main, block)
+    }
+
+    fun launchIO(block: suspend CoroutineScope.() -> Unit): Job {
+        return launch(Dispatchers.IO, block)
+    }
+
+    fun singleLaunchMain(name: String = "singleMain", block: suspend CoroutineScope.() -> Unit) {
+        if (singleMainJob.containsKey(name)) {
+            singleMainJob[name]?.let { if (it.isActive) it.cancel() }
+            singleMainJob.remove(name)
+        }
+
+        singleMainJob[name] = launch(Dispatchers.Main + CoroutineName(name), block)
+    }
+
+    fun singleLaunchIO(name: String = "singleIO", block: suspend CoroutineScope.() -> Unit) {
+        if (singleIOJob.containsKey(name)) {
+            singleIOJob[name]?.let { if (it.isActive) it.cancel() }
+            singleIOJob.remove(name)
+        }
+
+        singleIOJob[name] = launch(Dispatchers.IO + CoroutineName(name), block)
     }
 
     fun refresh(block: () -> Unit) {
@@ -97,20 +126,30 @@ abstract class BaseHook<T>() : HookEntity<T>() {
     }
 
     @Synchronized
-    fun showDialog(view: View) {
+    fun showDialog(
+        view: View,
+        onDismiss: () -> Unit = {},
+    ) {
         kDialog = if (kDialog == null) KDialog() else kDialog
         kDialog!!.setView(view)
         kDialog!!.show()
+        kDialog!!.setOnDismissListener { onDismiss.invoke() }
     }
 
     @Synchronized
     fun showComposeDialog(
         context: Context,
+        onDismiss: () -> Unit = {},
         content: @Composable (closeHandler: () -> Unit) -> Unit
     ) {
         XplerDialogWrapper(context).apply {
             setWrapperContent {
-                content.invoke(this::dismiss)
+                ModuleTheme {
+                    content.invoke(this::dismiss)
+                }
+            }
+            setOnDismissListener {
+                onDismiss.invoke()
             }
         }.show()
     }
@@ -124,6 +163,7 @@ abstract class BaseHook<T>() : HookEntity<T>() {
         singleButton: Boolean = false, // 只会响应 onConfirm 方法
         onConfirm: () -> Unit = {},
         onCancel: () -> Unit = {},
+        onDismiss: () -> Unit = {},
     ) {
         val isDarkMode = context.isDarkMode
         val dialogView = context.inflateModuleView<FrameLayout>(R.layout.dialog_message_layout)
@@ -169,14 +209,18 @@ abstract class BaseHook<T>() : HookEntity<T>() {
             onConfirm.invoke()
         }
 
-        showDialog(binding.root)
+        showDialog(
+            view = binding.root,
+            onDismiss = onDismiss,
+        )
     }
 
     fun showProgressDialog(
         context: Context,
         title: CharSequence,
         progress: Int = 0,
-        listener: (dialog: KDialog, progress: io.github.fplus.core.base.BaseHook.ProgressDialogNotification) -> Unit,
+        listener: (dialog: KDialog, progress: ProgressDialogNotification) -> Unit,
+        onDismiss: () -> Unit = {},
     ) {
         val isDarkMode = context.isDarkMode
         val dialogView = KtXposedHelpers.inflateView<FrameLayout>(context, R.layout.dialog_progress_layout)
@@ -199,7 +243,10 @@ abstract class BaseHook<T>() : HookEntity<T>() {
             )
         )
 
-        showDialog(binding.root)
+        showDialog(
+            view = binding.root,
+            onDismiss = onDismiss
+        )
     }
 
     fun showInputChoiceDialog(
@@ -214,6 +261,7 @@ abstract class BaseHook<T>() : HookEntity<T>() {
         cancel: CharSequence = "取消",
         onChoice: (view: View, input1: String, input2: String, item: CharSequence, position: Int) -> Unit,
         onCancel: () -> Unit = {},
+        onDismiss: () -> Unit = {},
     ) {
         val isDarkMode = context.isDarkMode
         val dialogView = KtXposedHelpers.inflateView<FrameLayout>(context, R.layout.dialog_input_choice_layout)
@@ -282,7 +330,10 @@ abstract class BaseHook<T>() : HookEntity<T>() {
             )
         }
 
-        showDialog(binding.root)
+        showDialog(
+            view = binding.root,
+            onDismiss = onDismiss
+        )
     }
 
     fun showChoiceDialog(
@@ -338,7 +389,6 @@ abstract class BaseHook<T>() : HookEntity<T>() {
         showDialog(binding.root)
     }
 
-
     private fun getHintTextColor(isDarkMode: Boolean): Int {
         return if (isDarkMode) {
             Color.parseColor("#FFAAAAAA")
@@ -362,7 +412,6 @@ abstract class BaseHook<T>() : HookEntity<T>() {
             KtXposedHelpers.getDrawable(lightId)
         }
     }
-
 
     fun showNotification(
         context: Context,
@@ -411,6 +460,11 @@ abstract class BaseHook<T>() : HookEntity<T>() {
         override fun setFinishedText(finishedText: String) {
             progressBar.progress = 100
             progressText.text = finishedText
+        }
+
+        override fun setFailedText(failedText: String) {
+            progressBar.setProgress(0, true)
+            progressText.text = failedText
         }
 
         override fun notifyProgress(step: Int, inProgressText: String) {

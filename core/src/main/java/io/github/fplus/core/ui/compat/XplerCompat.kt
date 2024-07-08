@@ -26,10 +26,7 @@ fun painterResourceCompat(@DrawableRes id: Int): Painter {
     res.getValue(id, value, true)
     val path = value.string
 
-    KLogCat.d(
-        "Resources: $res",
-        "Path: $path",
-    )
+    KLogCat.i("Resources: $res", "Path: $path")
 
     if (path?.endsWith(".xml") == true) {
         return painterResource(id = id)
@@ -55,7 +52,7 @@ private fun XmlPullParser.seekToStartTag(): XmlPullParser {
     while (type != XmlPullParser.START_TAG && type != XmlPullParser.END_DOCUMENT) {
         // Empty loop
         type = next()
-        KLogCat.d(this.name)
+        KLogCat.i(this.name)
     }
     if (type != XmlPullParser.START_TAG) {
         throw XmlPullParserException("No start tag found")

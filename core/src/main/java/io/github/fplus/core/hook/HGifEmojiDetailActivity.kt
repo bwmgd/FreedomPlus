@@ -1,14 +1,12 @@
 package io.github.fplus.core.hook
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.widget.TextView
 import androidx.core.view.isVisible
-import com.freegang.ktutils.app.contentView
-import com.freegang.ktutils.extension.asOrNull
-import com.freegang.ktutils.log.KLogCat
-import com.freegang.ktutils.reflect.fieldGetFirst
-import com.freegang.ktutils.view.firstOrNull
-import com.freegang.ktutils.view.idName
+import com.freegang.extension.contentView
+import com.freegang.extension.firstOrNull
+import com.freegang.extension.idName
 import com.ss.android.ugc.aweme.comment.ui.GifEmojiDetailActivity
 import com.ss.android.ugc.aweme.emoji.model.Emoji
 import de.robv.android.xposed.XC_MethodHook
@@ -17,10 +15,11 @@ import io.github.fplus.core.config.ConfigV1
 import io.github.fplus.core.hook.logic.SaveEmojiLogic
 import io.github.xpler.core.entity.OnBefore
 import io.github.xpler.core.hookBlockRunning
+import io.github.xpler.core.log.XplerLog
 import io.github.xpler.core.thisActivity
 import kotlinx.coroutines.delay
 
-class HGifEmojiDetailActivity : BaseHook<GifEmojiDetailActivity>() {
+class HGifEmojiDetailActivity : BaseHook() {
     companion object {
         const val TAG = "HGifEmojiDetailActivity"
     }
@@ -29,36 +28,50 @@ class HGifEmojiDetailActivity : BaseHook<GifEmojiDetailActivity>() {
 
     private var urlList: List<String> = emptyList()
 
+    override fun setTargetClass(): Class<*> {
+        return GifEmojiDetailActivity::class.java
+    }
+
     @OnBefore("onCreate")
     fun onCreate(params: XC_MethodHook.MethodHookParam, bundle: Bundle?) {
         hookBlockRunning(params) {
-            if (!config.isEmoji) return
+            if (!config.isEmojiDownload)
+                return
             val gifEmoji = thisActivity.intent.getSerializableExtra("gif_emoji") as Emoji? ?: return
 
-            val animateUrl = gifEmoji.fieldGetFirst("animateUrl")
-            urlList = animateUrl?.fieldGetFirst("urlList")?.asOrNull<List<String>>() ?: emptyList()
-            if (urlList.isEmpty()) return
+            val animateUrl = gifEmoji.animateUrl
+            urlList = animateUrl?.urlList ?: emptyList()
+
+            if (urlList.isEmpty())
+                return
 
             rebuildView(thisActivity as GifEmojiDetailActivity)
         }.onFailure {
-            KLogCat.tagE(TAG, it)
+            XplerLog.e(it)
         }
     }
 
     // 重构布局
+    @SuppressLint("SetTextI18n")
     private fun rebuildView(activity: GifEmojiDetailActivity) {
-        launch {
+        singleLaunchMain {
             delay(200L)
 
-            activity.contentView.firstOrNull<TextView> {
-                it.idName.contains("text_right")
-            }?.apply {
-                isVisible = true
-                text = "保存"
-                setOnClickListener {
-                    SaveEmojiLogic(this@HGifEmojiDetailActivity, activity, urlList)
+            activity.contentView
+                .firstOrNull(TextView::class.java) {
+                    it.idName.contains("text_right")
                 }
-            }
+                ?.apply {
+                    isVisible = true
+                    text = "保存"
+                    setOnClickListener {
+                        SaveEmojiLogic(
+                            hook = this@HGifEmojiDetailActivity,
+                            context = context,
+                            urlList = urlList,
+                        )
+                    }
+                }
         }
     }
 }

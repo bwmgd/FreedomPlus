@@ -2,26 +2,28 @@ package io.github.fplus.core.hook
 
 import android.view.View
 import androidx.core.view.updatePadding
-import com.freegang.ktutils.display.dip2px
-import com.freegang.ktutils.log.KLogCat
+import com.freegang.extension.dip2px
 import com.ss.android.ugc.aweme.feed.ui.PenetrateTouchRelativeLayout
 import de.robv.android.xposed.XC_MethodHook
 import io.github.fplus.core.base.BaseHook
 import io.github.fplus.core.config.ConfigV1
-import io.github.xpler.core.entity.FutureHook
 import io.github.xpler.core.entity.OnBefore
 import io.github.xpler.core.hookBlockRunning
+import io.github.xpler.core.log.XplerLog
 import io.github.xpler.core.thisViewGroup
 import io.github.xpler.core.wrapper.CallMethods
 
-class HPenetrateTouchRelativeLayout : BaseHook<PenetrateTouchRelativeLayout>(), CallMethods {
+class HPenetrateTouchRelativeLayout : BaseHook(), CallMethods {
     companion object {
         const val TAG = "HPenetrateTouchRelativeLayout"
     }
 
     private val config get() = ConfigV1.get()
 
-    @FutureHook
+    override fun setTargetClass(): Class<*> {
+        return PenetrateTouchRelativeLayout::class.java
+    }
+
     @OnBefore("setVisibility")
     fun setVisibilityBefore(params: XC_MethodHook.MethodHookParam, visibility: Int) {
         hookBlockRunning(params) {
@@ -33,7 +35,7 @@ class HPenetrateTouchRelativeLayout : BaseHook<PenetrateTouchRelativeLayout>(), 
                 return
             }
 
-            if (visibility == View.GONE || visibility == View.INVISIBLE) {
+            if (visibility == View.GONE/* || visibility == View.INVISIBLE*/) {
                 return
             }
 
@@ -45,7 +47,16 @@ class HPenetrateTouchRelativeLayout : BaseHook<PenetrateTouchRelativeLayout>(), 
                 HMainActivity.toggleView(true)
             }
         }.onFailure {
-            KLogCat.tagE(TAG, it)
+            XplerLog.e(it)
+        }
+    }
+
+    @OnBefore
+    fun methodBefore(params: XC_MethodHook.MethodHookParam, visibility: Int, string: String?) {
+        hookBlockRunning(params) {
+            setVisibilityBefore(params, visibility)
+        }.onFailure {
+            XplerLog.tagE(TAG, it)
         }
     }
 
@@ -57,12 +68,12 @@ class HPenetrateTouchRelativeLayout : BaseHook<PenetrateTouchRelativeLayout>(), 
         hookBlockRunning(params) {
             if (config.isImmersive) {
                 thisViewGroup.apply {
-                    val bottomPadding = context.dip2px(58f) // BottomTabBarHeight
+                    val bottomPadding = 58f.dip2px() // BottomTabBarHeight
                     updatePadding(bottom = bottomPadding)
                 }
             }
         }.onFailure {
-            KLogCat.tagE(TAG, it)
+            XplerLog.e(it)
         }
     }
 

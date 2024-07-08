@@ -17,10 +17,9 @@ import android.os.Bundle
 import android.util.AttributeSet
 import android.util.DisplayMetrics
 import android.util.TypedValue
+import com.freegang.extension.findFieldSetValue
+import com.freegang.extension.findMethodInvoke
 import com.freegang.ktutils.log.KLogCat
-import com.freegang.ktutils.reflect.fieldSetFirst
-import com.freegang.ktutils.reflect.methodInvokeFirst
-import com.freegang.ktutils.reflect.methodInvokes
 import io.github.xpler.core.KtXposedHelpers
 import java.io.InputStream
 
@@ -34,11 +33,11 @@ class PluginResources(
 
     private val pluginResources by lazy {
         if (KtXposedHelpers.modulePath.isEmpty()) {
-            KLogCat.d("未获取到模块路径!")
+            KLogCat.i("未获取到模块路径!")
             originResources
         } else {
             val assetManager = AssetManager::class.java.newInstance()
-            assetManager.methodInvokes("addAssetPath", args = arrayOf(KtXposedHelpers.modulePath))
+            assetManager.findMethodInvoke<Any>(KtXposedHelpers.modulePath) { name("addAssetPath") }
             Resources(assetManager, originResources.displayMetrics, originResources.configuration)
         }
     }
@@ -810,7 +809,7 @@ class PluginResources(
 // 代理Resources
 fun proxyRes(activity: Activity?) {
     activity?.runCatching {
-        this.fieldSetFirst("mResources", PluginResources(activity.resources))
+        this.findFieldSetValue(PluginResources(activity.resources)) { name("mResources") }
     }
 }
 
@@ -818,6 +817,6 @@ fun proxyRes(activity: Activity?) {
 fun injectRes(res: Resources?) {
     if (res != null) {
         val assets = res.assets
-        assets.methodInvokeFirst("addAssetPath", args = arrayOf(KtXposedHelpers.modulePath))
+        assets.findFieldSetValue(KtXposedHelpers.modulePath) { name("addAssetPath") }
     }
 }

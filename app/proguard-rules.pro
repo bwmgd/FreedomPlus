@@ -54,7 +54,7 @@
 -keepattributes Signature
 
 # 抛出异常时保留代码行号
--keepattributes SourceFile,LineNumberTable
+-keepattributes !SourceFile,LineNumberTable
 
 # 指定混淆是采用的算法，后面的参数是一个过滤器
 # 这个过滤器是谷歌推荐的算法，一般不做更改
@@ -67,12 +67,12 @@
 
 # 关闭警告信息 - Xposed
 -dontwarn de.robv.android.xposed.**
--dontwarn android.content.res.XModuleResources
--dontwarn android.content.res.XResources
+-dontwarn android.content.res.**
 
 # 关闭警告信息 - 抖音
 -dontwarn com.ss.android.ugc.aweme.**
 -dontwarn com.ss.ugc.aweme.**
+-dontwarn com.bytedance.**
 -dontwarn dmt.**
 
 # 关闭警告信息 - 其他
@@ -87,5 +87,4 @@
 -dontwarn org.openjsse.net.ssl.OpenJSSE
 
 # 模块状态
--keep class io.github.fplus.HookInit extends * { *; }
--keep class io.github.fplus.HookStatus extends * { *; }
+-keep class io.github.fplus.HookInit

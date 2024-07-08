@@ -2,10 +2,10 @@ package io.github.fplus.core.config
 
 import android.content.Context
 import android.os.Environment
-import com.freegang.ktutils.io.child
-import com.freegang.ktutils.io.storageRootFile
-import com.freegang.ktutils.json.getStringOrDefault
-import com.freegang.ktutils.json.parseJSON
+import com.freegang.extension.child
+import com.freegang.extension.getStringOrDefault
+import com.freegang.extension.parseJSON
+import com.freegang.extension.storageRootFile
 import com.tencent.mmkv.MMKV
 import io.github.webdav.WebDav
 import org.json.JSONObject
@@ -59,46 +59,68 @@ class ConfigV1 private constructor() {
         }
 
     /// 按视频创作者单独创建文件夹
-    var isOwnerDir: Boolean = false
+    var ownerDir: Boolean = false
         get() {
-            field = mmkv.getBoolean("isOwnerDir", false)
+            field = mmkv.getBoolean("ownerDir", false)
             return field
         }
         set(value) {
-            mmkv.putBoolean("isOwnerDir", value)
+            mmkv.putBoolean("ownerDir", value)
             field = value
         }
 
     /// 通知栏下载
-    var isNotification: Boolean = false
+    var notificationDownload: Boolean = false
         get() {
-            field = mmkv.getBoolean("isNotification", false)
+            field = mmkv.getBoolean("notificationDownload", false)
             return field
         }
         set(value) {
-            mmkv.putBoolean("isNotification", value)
+            mmkv.putBoolean("notificationDownload", value)
+            field = value
+        }
+
+    /// 复制链接时弹出下载
+    var copyLinkDownload: Boolean = false
+        get() {
+            field = mmkv.getBoolean("copyLinkDownload", false)
+            return field
+        }
+        set(value) {
+            mmkv.putBoolean("copyLinkDownload", value)
+            field = value
+        }
+
+    /// 视频编码 [Auto, H265, H264]
+    var videoCoding: String = "H265"
+        get() {
+            field = mmkv.getString("videoCoding", "H265")!!
+            return field
+        }
+        set(value) {
+            mmkv.putString("videoCoding", value)
             field = value
         }
 
     /// 表情包/评论区视频、图片保存
-    var isEmoji: Boolean = false
+    var isEmojiDownload: Boolean = false
         get() {
-            field = mmkv.getBoolean("isEmoji", false)
+            field = mmkv.getBoolean("isEmojiDownload", false)
             return field
         }
         set(value) {
-            mmkv.putBoolean("isEmoji", value)
+            mmkv.putBoolean("isEmojiDownload", value)
             field = value
         }
 
     /// 震动反馈
-    var isVibrate: Boolean = false
+    var vibrate: Boolean = false
         get() {
-            field = mmkv.getBoolean("isVibrate", false)
+            field = mmkv.getBoolean("vibrate", false)
             return field
         }
         set(value) {
-            mmkv.putBoolean("isVibrate", value)
+            mmkv.putBoolean("vibrate", value)
             field = value
         }
 
@@ -116,7 +138,8 @@ class ConfigV1 private constructor() {
     /// 首页控件透明度 [顶部导航, 视频控件, 视频控件右侧, 底部导航]
     var translucentValue: List<Int> = listOf(50, 50, 50, 50)
         get() {
-            field = mmkv.getString("translucentValue", "50, 50, 50, 50")!!.split(",")
+            field = mmkv.getString("translucentValue", "50, 50, 50, 50")!!
+                .split(",")
                 .map { it.trim().toInt() }
 
             return if (field.size == 3) {
@@ -163,6 +186,50 @@ class ConfigV1 private constructor() {
             field = value
         }
 
+    /// 隐藏顶部tab
+    var isHideTopTab: Boolean = false
+        get() {
+            field = mmkv.getBoolean("isHideTopTab", false)
+            return field
+        }
+        set(value) {
+            mmkv.putBoolean("isHideTopTab", value)
+            field = value
+        }
+
+    /// 隐藏顶部tab包含的关键字, 逗号隔开
+    var hideTopTabKeywords: String = "经验, 探索, 商城"
+        get() {
+            field = mmkv.getString("hideTopTabKeywords", "经验, 探索, 商城")!!
+            return field
+        }
+        set(value) {
+            mmkv.putString("hideTopTabKeywords", value)
+            field = value
+        }
+
+    /// 隐藏底部tab
+    var isHideBottomTab: Boolean = false
+        get() {
+            field = mmkv.getBoolean("isHideBottomTab", false)
+            return field
+        }
+        set(value) {
+            mmkv.putBoolean("isHideBottomTab", value)
+            field = value
+        }
+
+    /// 隐藏底部tab包含的关键字, 逗号隔开
+    var hideBottomTabKeywords: String = "商城, 朋友, 消息"
+        get() {
+            field = mmkv.getString("hideBottomTabKeywords", "商城, 朋友, 消息")!!
+            return field
+        }
+        set(value) {
+            mmkv.putString("hideBottomTabKeywords", value)
+            field = value
+        }
+
     /// 隐藏底部加号按钮
     var isHidePhotoButton: Boolean = false
         get() {
@@ -182,6 +249,17 @@ class ConfigV1 private constructor() {
         }
         set(value) {
             mmkv.putInt("photoButtonType", value)
+            field = value
+        }
+
+    /// 手势误触复确认
+    var isPreventAccidentalTouch: Boolean = false
+        get() {
+            field = mmkv.getBoolean("isPreventAccidentalTouch", false)
+            return field
+        }
+        set(value) {
+            mmkv.putBoolean("isPreventAccidentalTouch", value)
             field = value
         }
 
@@ -279,6 +357,39 @@ class ConfigV1 private constructor() {
             field = value
         }
 
+    /// 自动连播
+    var isAutoPlay: Boolean = false
+        get() {
+            field = mmkv.getBoolean("isAutoPlay", false)
+            return field
+        }
+        set(value) {
+            mmkv.putBoolean("isAutoPlay", value)
+            field = value
+        }
+
+    /// 首页添加连播按钮
+    var addAutoPlayButton: Boolean = false
+        get() {
+            field = mmkv.getBoolean("addAutoPlayButton", false)
+            return field
+        }
+        set(value) {
+            mmkv.putBoolean("addAutoPlayButton", value)
+            field = value
+        }
+
+    /// 启动时默认开启连播
+    var defaultAutoPlay: Boolean = false
+        get() {
+            field = mmkv.getBoolean("defaultAutoPlay", false)
+            return field
+        }
+        set(value) {
+            mmkv.putBoolean("defaultAutoPlay", value)
+            field = value
+        }
+
     /// 当前是否处于清爽模式
     var neatModeState: Boolean = false
         get() {
@@ -312,6 +423,30 @@ class ConfigV1 private constructor() {
             field = value
         }
 
+    /// 消息防撤回
+    var isPreventRecalled: Boolean = false
+        get() {
+            field = mmkv.getBoolean("isPreventRecalled", false)
+            return field
+        }
+        set(value) {
+            mmkv.putBoolean("isPreventRecalled", value)
+            field = value
+        }
+
+    /// 撤回其他设置
+    var preventRecalledOtherSetting: List<Boolean> = listOf(false)
+        get() {
+            field = mmkv.getString("preventRecalledOtherSetting", "false")!!
+                .split(",")
+                .map { it.trim().toBoolean() }
+            return field
+        }
+        set(value) {
+            mmkv.putString("preventRecalledOtherSetting", value.joinToString())
+            field = value
+        }
+
     /// 全屏沉浸式
     var isImmersive: Boolean = false
         get() {
@@ -325,8 +460,10 @@ class ConfigV1 private constructor() {
     // 系统隐藏项(状态栏、导航栏)
     var systemControllerValue: List<Boolean> = listOf(false, false)
         get() {
-            return mmkv.getString("systemControllerValue", "false, false")!!.split(",")
+            field = mmkv.getString("systemControllerValue", "false, false")!!
+                .split(",")
                 .map { it.trim().toBoolean() }
+            return field
         }
         set(value) {
             mmkv.putString("systemControllerValue", value.joinToString())
@@ -350,28 +487,6 @@ class ConfigV1 private constructor() {
         }
         set(value) {
             mmkv.putInt("commentColorMode", value)
-            field = value
-        }
-
-    /// 隐藏顶部tab
-    var isHideTab: Boolean = false
-        get() {
-            field = mmkv.getBoolean("isHideTab", false)
-            return field
-        }
-        set(value) {
-            mmkv.putBoolean("isHideTab", value)
-            field = value
-        }
-
-    /// 隐藏顶部tab包含的关键字, 逗号隔开
-    var hideTabKeywords: String = "经验, 探索, 商城"
-        get() {
-            field = mmkv.getString("hideTabKeywords", "经验, 探索, 商城")!!
-            return field
-        }
-        set(value) {
-            mmkv.putString("hideTabKeywords", value)
             field = value
         }
 
@@ -444,12 +559,35 @@ class ConfigV1 private constructor() {
     /// 定时退出 [运行时间, 空闲时间]
     var timedShutdownValue: List<Int> = listOf(10, 3)
         get() {
-            field =
-                mmkv.getString("timedShutdownValue", "10, 3")!!.split(",").map { it.trim().toInt() }
+            field = mmkv.getString("timedShutdownValue", "10, 3")!!
+                .split(",")
+                .map { it.trim().toInt() }
             return field
         }
         set(value) {
             mmkv.putString("timedShutdownValue", value.joinToString())
+            field = value
+        }
+
+    /// 保留应用后台
+    var keepAppBackend: Boolean = false
+        get() {
+            field = mmkv.getBoolean("keepAppBackend", false)
+            return field
+        }
+        set(value) {
+            mmkv.putBoolean("keepAppBackend", value)
+            field = value
+        }
+
+    /// 崩溃容错
+    var isCrashTolerance: Boolean = false
+        get() {
+            field = mmkv.getBoolean("isCrashTolerance", false)
+            return field
+        }
+        set(value) {
+            mmkv.putBoolean("isCrashTolerance", value)
             field = value
         }
 
@@ -480,6 +618,16 @@ class ConfigV1 private constructor() {
             mmkv.putLong("versionCode", value.versionCode)
             mmkv.putString("dyVersionName", value.dyVersionName)
             mmkv.putLong("dyVersionCode", value.dyVersionCode)
+        }
+
+    var is32BitTips: Boolean = true
+        get() {
+            field = mmkv.getBoolean("is32BitTips", true)
+            return field
+        }
+        set(value) {
+            field = value
+            mmkv.putBoolean("is32BitTips", value)
         }
 
     var dexkitCache: JSONObject = JSONObject()

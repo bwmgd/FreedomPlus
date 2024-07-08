@@ -2,10 +2,9 @@ package io.github.fplus.core.hook
 
 import android.os.Bundle
 import android.view.View
-import com.freegang.ktutils.app.isDarkMode
-import com.freegang.ktutils.extension.asOrNull
-import com.freegang.ktutils.log.KLogCat
-import com.freegang.ktutils.reflect.fieldGets
+import com.freegang.extension.asOrNull
+import com.freegang.extension.findField
+import com.freegang.extension.isDarkMode
 import de.robv.android.xposed.XC_MethodHook
 import io.github.fplus.core.R
 import io.github.fplus.core.base.BaseHook
@@ -14,8 +13,9 @@ import io.github.xpler.core.KtXposedHelpers
 import io.github.xpler.core.entity.NoneHook
 import io.github.xpler.core.entity.OnAfter
 import io.github.xpler.core.hookBlockRunning
+import io.github.xpler.core.log.XplerLog
 
-class HConversationFragment : BaseHook<Any>() {
+class HConversationFragment : BaseHook() {
     companion object {
         const val TAG = "HConversationFragment"
     }
@@ -27,15 +27,20 @@ class HConversationFragment : BaseHook<Any>() {
     @OnAfter("onViewCreated")
     fun onViewCreatedAfter(params: XC_MethodHook.MethodHookParam, view: View, bundle: Bundle?) {
         hookBlockRunning(params) {
-            val views = thisObject.fieldGets(type = View::class.java)
+            val views = thisObject.findField { type(View::class.java) }
+                .getValues(thisObject)
                 .asOrNull<List<View?>>() ?: emptyList()
 
             if (view.context.isDarkMode) {
-                views.firstOrNull { it?.javaClass?.name?.contains("ConstraintLayout") == true }
+                views
+                    .firstOrNull {
+                        it?.javaClass?.name?.contains("ConstraintLayout") == true
+                    }
                     ?.background = KtXposedHelpers.getDrawable(R.drawable.aweme_bottom_panel_night_background)
             }
+
         }.onFailure {
-            KLogCat.tagE(TAG, it)
+            XplerLog.e(it)
         }
     }
 }

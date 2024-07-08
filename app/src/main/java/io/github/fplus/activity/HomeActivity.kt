@@ -21,7 +21,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -50,26 +49,32 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.lifecycleScope
+import com.freegang.extension.appVersion
 import com.freegang.ktutils.app.KAppUtils
 import com.freegang.ktutils.app.KToastUtils
-import com.freegang.ktutils.app.appVersionName
 import com.freegang.ktutils.log.KLogCat
 import io.github.fplus.Constant
 import io.github.fplus.FreedomTheme
 import io.github.fplus.HookStatus
-import io.github.fplus.R
 import io.github.fplus.Themes
 import io.github.fplus.core.config.ConfigV1
 import io.github.fplus.core.ui.component.FCard
 import io.github.fplus.core.ui.component.FMessageDialog
+import io.github.fplus.resource.IconRes
 import io.github.fplus.resource.StringRes
+import io.github.fplus.resource.icons.FindFile
+import io.github.fplus.resource.icons.Github
+import io.github.fplus.resource.icons.Motion
+import io.github.fplus.resource.icons.SpicyStrips
+import io.github.fplus.resource.icons.Telegram
+import io.github.fplus.resource.icons.Visibility
+import io.github.fplus.resource.icons.VisibilityOff
 import io.github.fplus.viewmodel.HomeVM
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -143,7 +148,7 @@ class HomeActivity : ComponentActivity() {
                     )
                 }
                 Icon(
-                    painter = painterResource(id = if (visible) R.drawable.ic_visibility else R.drawable.ic_visibility_off),
+                    imageVector = if (visible) IconRes.Visibility else IconRes.VisibilityOff,
                     contentDescription = "显示/隐藏图标",
                     tint = Themes.nowColors.icon,
                     modifier = Modifier
@@ -163,7 +168,7 @@ class HomeActivity : ComponentActivity() {
                 )
                 Spacer(modifier = Modifier.padding(horizontal = 12.dp))
                 Icon(
-                    painter = painterResource(id = R.drawable.ic_motion),
+                    imageVector = IconRes.Motion,
                     contentDescription = "检查更新/日志",
                     tint = Themes.nowColors.icon,
                     modifier = Modifier
@@ -178,7 +183,7 @@ class HomeActivity : ComponentActivity() {
                             onLongClick = {
                                 lifecycleScope.launch {
                                     updateLog = withContext(Dispatchers.IO) {
-                                        val inputStream = assets.open("update.log")
+                                        val inputStream = assets.open("update.txt")
                                         val bytes = inputStream.readBytes()
                                         val text = bytes.decodeToString()
                                         inputStream.close()
@@ -243,10 +248,16 @@ class HomeActivity : ComponentActivity() {
         var showNewVersionDialog by remember { mutableStateOf(true) }
         val version by model.versionConfig.observeAsState()
         if (version != null) {
-            val version = version!!
-            if (version.name.compareTo("v${application.appVersionName}") >= 1 && showNewVersionDialog) {
+            val v = version!!
+            if (v.tagName.compareTo(
+                    application.appVersion(
+                        "-",
+                        true
+                    )
+                ) >= 1 && showNewVersionDialog
+            ) {
                 FMessageDialog(
-                    title = "发现新版本 ${version.name}!",
+                    title = "发现新版本 ${v.name}!",
                     confirm = "确定",
                     cancel = "取消",
                     onCancel = {
@@ -256,7 +267,7 @@ class HomeActivity : ComponentActivity() {
                         startActivity(
                             Intent(
                                 Intent.ACTION_VIEW,
-                                Uri.parse(version.browserDownloadUrl),
+                                Uri.parse(v.browserDownloadUrl),
                             )
                         )
                     },
@@ -267,7 +278,7 @@ class HomeActivity : ComponentActivity() {
                         item {
                             Text(
                                 modifier = Modifier.fillMaxWidth(),
-                                text = version.body,
+                                text = v.body,
                                 style = MaterialTheme.typography.body1,
                             )
                         }
@@ -293,9 +304,9 @@ class HomeActivity : ComponentActivity() {
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             val packageInfo =
-                                KAppUtils.getPackageInfo(application, Constant.scopes[0].packageName)
+                                KAppUtils.getPackageInfo(application, Constant.scopes.elementAt(0).packageName)
                             val lspatchActive =
-                                HookStatus.isLSPatchActive(application, Constant.scopes[0].packageName)
+                                HookStatus.isLSPatchActive(application, Constant.scopes.elementAt(0).packageName)
                             if (lspatchActive.isNotEmpty()) {
                                 moduleState.value = "Lspatch加载成功!"
                                 Text(
@@ -419,7 +430,7 @@ class HomeActivity : ComponentActivity() {
                             text = buildAnnotatedString {
                                 append("该操作将清空")
                                 withStyle(SpanStyle(Color.Red)) {
-                                    append("数据目录")
+                                    append("下载目录")
                                 }
                                 append("包括下载的")
                                 withStyle(SpanStyle(Color.Red)) {
@@ -453,18 +464,18 @@ class HomeActivity : ComponentActivity() {
                     ) {
                         Icon(
                             modifier = Modifier.size(24.dp),
-                            painter = painterResource(id = R.drawable.ic_find_file),
-                            contentDescription = "数据目录",
+                            imageVector = IconRes.FindFile,
+                            contentDescription = "下载目录",
                             tint = Themes.nowColors.icon,
                         )
                         Spacer(modifier = Modifier.padding(horizontal = 8.dp))
                         Column {
                             Text(
-                                text = "数据目录: `外置存储器/Download/Freedom`",
+                                text = "下载目录: `外置存储器/Download/Freedom`",
                                 style = Themes.nowTypography.body1,
                             )
                             Text(
-                                text = "长按清空数据目录",
+                                text = "长按清空下载目录",
                                 style = Themes.nowTypography.overline,
                             )
                         }
@@ -490,7 +501,7 @@ class HomeActivity : ComponentActivity() {
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Icon(
-                            painter = painterResource(id = R.drawable.ic_github),
+                            imageVector = IconRes.Github,
                             contentDescription = "Github",
                             tint = Themes.nowColors.icon,
                             modifier = Modifier.size(24.dp)
@@ -566,7 +577,7 @@ class HomeActivity : ComponentActivity() {
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Icon(
-                            painter = painterResource(id = R.drawable.ic_telegram),
+                            imageVector = IconRes.Telegram,
                             contentDescription = "Telegram频道",
                             tint = Themes.nowColors.icon,
                             modifier = Modifier.size(24.dp)
@@ -604,7 +615,7 @@ class HomeActivity : ComponentActivity() {
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Icon(
-                            painter = painterResource(id = R.drawable.ic_spicy_strips),
+                            imageVector = IconRes.SpicyStrips,
                             contentDescription = "请我吃辣条",
                             tint = Themes.nowColors.icon,
                             modifier = Modifier.size(24.dp)
@@ -639,7 +650,7 @@ class HomeActivity : ComponentActivity() {
                     modifier = Modifier.padding(horizontal = 24.dp),
                     topBar = { TopBarView() },
                 ) {
-                    BoxWithConstraints(
+                    Box(
                         modifier = Modifier.padding(it)
                     ) {
                         BodyView()
@@ -655,10 +666,6 @@ class HomeActivity : ComponentActivity() {
         model.updateVersions()
     }
 
-    override fun onPause() {
-        super.onPause()
-    }
-
     private fun toModuleSetting() {
         runCatching {
             if (!moduleState.value.contains("加载成功")) {
@@ -668,7 +675,7 @@ class HomeActivity : ComponentActivity() {
 
             val intent = Intent()
             intent.setClassName(
-                Constant.scopes[0].packageName,
+                Constant.scopes.elementAt(0).packageName,
                 "com.ss.android.ugc.aweme.main.MainActivity"
             )
             intent.putExtra("startModuleSetting", true)

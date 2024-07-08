@@ -1,6 +1,6 @@
 # FreedomPlus
 
-[![](https://img.shields.io/github/v/release/GangJust/FreedomPlus)](https://github.com/GangJust/FreedomPlus/releases) [![](https://img.shields.io/github/downloads/GangJust/FreedomPlus/total?color=g)]() [![](https://img.shields.io/badge/telegram-freedom%2B-2481CC)](https://t.me/FreedomPlugin)
+[![](https://img.shields.io/github/v/release/GangJust/FreedomPlus?display_name=release)](https://github.com/GangJust/FreedomPlus/releases) [![](https://img.shields.io/github/downloads/GangJust/FreedomPlus/total?color=g)]() [![](https://img.shields.io/badge/telegram-freedom%2B-BB4E75)](https://t.me/FreedomPlugin)
 
 依赖于抖音运行的开源Xposed模块，Lsposed正常使用，其他框架自测。
 
@@ -18,6 +18,7 @@
 - 首页控件半透明防烧屏
 - 首页清爽模式隐藏大部分控件
 - 顶部Tab栏自定义隐藏
+- 聊天消息防撤回
 - 禁用双击点赞
 - 双击打开评论区
 - 全屏沉浸式播放
@@ -28,8 +29,8 @@
 
 ## 支持版本
 
-- 理论上支持：23.5.0 ~ 至今
-- 具体版本号列表可参考：[version.json](https://github.com/GangJust/FreedomPlus/blob/master/versions.json)
+- 理论上支持：28.0.0 ~ 至今 (28.0.0以下可能有兼容问题，请使用1.2.8之前的版本)
+- 版本号**参考**列表：[version.json](https://github.com/GangJust/FreedomPlus/blob/master/versions.json)
 
 
 

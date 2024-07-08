@@ -12,15 +12,15 @@ import android.os.IBinder
 import android.os.PersistableBundle
 import androidx.annotation.Keep
 import androidx.annotation.RequiresApi
-import com.freegang.ktutils.reflect.classLoader
-import io.github.fplus.plugin.base.IXplerActivity
+import com.freegang.extension.classLoader
+import io.github.fplus.plugin.base.IPluginActivity
 import io.github.xpler.loader.moduleClassloader
 import java.lang.reflect.Method
 
 @Keep
 class PluginInstrumentation(
     private val mBase: Instrumentation,
-    private val stubActivity: Class<*>,
+    private val stubActivity: String,
 ) : Instrumentation() {
     companion object {
         const val PLUGIN_PROXY_ACTIVITY = "xpler_plugin"
@@ -135,8 +135,8 @@ class PluginInstrumentation(
             if (intent?.component != null) {
                 try {
                     val pluginClazz = pluginClassloader?.loadClass(intent.component?.className)
-                    if (pluginClazz != null && IXplerActivity::class.java.isAssignableFrom(pluginClazz)) {
-                        newIntent = Intent(who, stubActivity)
+                    if (pluginClazz != null && IPluginActivity::class.java.isAssignableFrom(pluginClazz)) {
+                        newIntent = Intent().apply { setClassName(who!!, stubActivity) }
                         intent.extras?.let { newIntent.putExtras(it) }
                         newIntent.putExtra(PLUGIN_PROXY_ACTIVITY, pluginClazz.name)
                     }

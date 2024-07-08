@@ -2,17 +2,18 @@ package io.github.fplus.core.hook
 
 import android.app.Dialog
 import android.widget.TextView
+import com.freegang.extension.ellipsis
+import com.freegang.extension.forEachWhereChild
 import com.freegang.ktutils.app.KToastUtils
 import com.freegang.ktutils.log.KLogCat
-import com.freegang.ktutils.text.ellipsis
-import com.freegang.ktutils.view.forEachWhereChild
 import de.robv.android.xposed.XC_MethodHook
 import io.github.fplus.core.base.BaseHook
 import io.github.fplus.core.config.ConfigV1
 import io.github.xpler.core.entity.OnAfter
 import io.github.xpler.core.hookBlockRunning
+import io.github.xpler.core.log.XplerLog
 
-class HDialog : BaseHook<Dialog>() {
+class HDialog : BaseHook() {
     companion object {
         const val TAG = "HDialog"
     }
@@ -21,11 +22,16 @@ class HDialog : BaseHook<Dialog>() {
 
     private val dialogFilterKeywords by lazy {
         config.dialogFilterKeywords
-            .removePrefix(",").removePrefix("，")
-            .removeSuffix(",").removeSuffix("，")
+            .replace("，", ",")
             .replace("\\s".toRegex(), "")
-            .replace("[,，]".toRegex(), "|")
+            .removePrefix(",").removeSuffix(",")
+            .replace(",", "|")
+            .replace("\\|+".toRegex(), "|")
             .toRegex()
+    }
+
+    override fun setTargetClass(): Class<*> {
+        return Dialog::class.java
     }
 
     @OnAfter("show")
@@ -43,17 +49,17 @@ class HDialog : BaseHook<Dialog>() {
             }
 
             mDecorView.forEachWhereChild {
-                if ("${this.contentDescription}".contains(dialogFilterKeywords)) {
+                if ("${it.contentDescription}".contains(dialogFilterKeywords)) {
                     dialog.dismiss()
                     if (config.dialogDismissTips) {
-                        KToastUtils.show(dialog.context, "“${this.contentDescription.ellipsis(5)}”关闭成功!")
+                        KToastUtils.show(dialog.context, "“${it.contentDescription.ellipsis(5)}”关闭成功!")
                     }
                     return@forEachWhereChild true
-                } else if (this is TextView) {
-                    if ("${this.text}".contains(dialogFilterKeywords)) {
+                } else if (it is TextView) {
+                    if ("${it.text}".contains(dialogFilterKeywords)) {
                         dialog.dismiss()
                         if (config.dialogDismissTips) {
-                            KToastUtils.show(dialog.context, "“${this.text.ellipsis(5)}”关闭成功!")
+                            KToastUtils.show(dialog.context, "“${it.text.ellipsis(5)}”关闭成功!")
                         }
                         return@forEachWhereChild true
                     }
@@ -62,7 +68,7 @@ class HDialog : BaseHook<Dialog>() {
                 false
             }
         }.onFailure {
-            KLogCat.tagE(TAG, it)
+            XplerLog.e(it)
         }
     }
 }

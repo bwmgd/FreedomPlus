@@ -8,7 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.view.WindowCompat
-import com.freegang.ktutils.extension.asOrNull
+import com.freegang.extension.asOrNull
 import io.github.fplus.plugin.PluginClassloader
 import io.github.fplus.plugin.PluginContextThemeWrapper
 import io.github.fplus.plugin.PluginResources
@@ -16,15 +16,13 @@ import io.github.fplus.plugin.base.BaseActivity
 
 abstract class XplerActivity : BaseActivity() {
 
-    private val mClassLoader: PluginClassloader? = null
+    private val mClassLoader by lazy { PluginClassloader() }
 
     private var mResources: Resources? = null
 
     private val content = mutableStateOf<(@Composable () -> Unit)?>(null)
 
-    override fun getClassLoader(): ClassLoader {
-        return mClassLoader ?: super.getClassLoader()
-    }
+    override fun getClassLoader(): ClassLoader = mClassLoader
 
     override fun getResources(): Resources {
         return mResources ?: super.getResources()
