@@ -10,13 +10,24 @@ enum class OperateType(val value: String) {
     COLLECT("收藏"),
     DOWNLOAD("下载"),
     MODULE("模块菜单"),
-    PAUSE("暂停视频");
+    INFO("视频信息");
 
     companion object {
         private fun fromInt(value: Int) = values().first { it.ordinal == value }
 
-        fun fromTriggerString(value: String, triggerType: TriggerType) =
-            fromInt(value.substring(triggerType.ordinal, triggerType.ordinal + 1).toInt())
+        fun fromTriggerString(value: String, triggerType: TriggerType?): OperateType? {
+            triggerType ?: return null
+            return fromInt(value.substring(triggerType.ordinal, triggerType.ordinal + 1).toInt())
+        }
+
+        fun fromPosition(
+            x: Float, y: Float, width: Int, height: Int, value: String, isDoubleClick: Boolean
+        ): OperateType? {
+            val triggerType = TriggerType.judgement(x, y, width, height, isDoubleClick)
+            val fromTriggerString = fromTriggerString(value, triggerType)
+            if (isDoubleClick && fromTriggerString == ORIGINAL) return LIKE
+            return fromTriggerString
+        }
     }
 }
 
@@ -27,19 +38,28 @@ enum class TriggerType(val value: String) {
     RIGHT_TOP("右上角长按"),
     LEFT_BOTTOM("左下角长按"),
     RIGHT_BOTTOM("右下角长按"),
-    DOUBLE_CLICK("双击");
+    DOUBLE_LEFT_TOP("左上角双击"),
+    DOUBLE_RIGHT_TOP("右上角双击"),
+    DOUBLE_LEFT_BOTTOM("左下角双击"),
+    DOUBLE_RIGHT_BOTTOM("右下角双击");
 
     companion object {
-        fun judgement(x: Float, y: Float, width: Int, height: Int): TriggerType? {
+        fun judgement(
+            x: Float,
+            y: Float,
+            width: Int,
+            height: Int,
+            isDoubleClick: Boolean
+        ): TriggerType? {
             val xRatio = x / width
             val yRatio = y / height
-            return when {
-                xRatio < 0.5 && yRatio < 0.5 -> LEFT_TOP
-                xRatio >= 0.5 && yRatio < 0.5 -> RIGHT_TOP
-                xRatio < 0.5 && yRatio >= 0.5 -> LEFT_BOTTOM
-                xRatio >= 0.5 && yRatio >= 0.5 -> RIGHT_BOTTOM
-                else -> null
-            }
+            return TriggerType.values()[when {
+                xRatio < 0.5 && yRatio < 0.5 -> 0
+                xRatio >= 0.5 && yRatio < 0.5 -> 1
+                xRatio < 0.5 && yRatio >= 0.5 -> 2
+                xRatio >= 0.5 && yRatio >= 0.5 -> 3
+                else -> return null
+            } + if (isDoubleClick) 4 else 0]
         }
     }
 }

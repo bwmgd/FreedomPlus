@@ -76,7 +76,7 @@ class FreedomSettingVM(application: Application) : AndroidViewModel(application)
     val isTriggerType: LiveData<Boolean> = _isTriggerType
 
     // 长按(左上,右上,左下,右下) 双击
-    private var _triggerOperateType = MutableLiveData("00000")
+    private var _triggerOperateType = MutableLiveData("00000000")
     val triggerOperateType: LiveData<String> = _triggerOperateType
 
     private var _isLongtimeVideoToast = MutableLiveData(false)

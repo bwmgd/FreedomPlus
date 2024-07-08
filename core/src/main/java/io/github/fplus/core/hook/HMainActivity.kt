@@ -13,6 +13,7 @@ import android.widget.RelativeLayout
 import androidx.core.view.isVisible
 import com.freegang.extension.appVersionCode
 import com.freegang.extension.appVersionName
+import com.freegang.extension.asOrNull
 import com.freegang.extension.contentView
 import com.freegang.extension.firstParentOrNull
 import com.freegang.extension.forEachChild
@@ -29,6 +30,7 @@ import io.github.fplus.core.base.BaseHook
 import io.github.fplus.core.config.ConfigV1
 import io.github.fplus.core.helper.AutoPlayHelper
 import io.github.fplus.core.helper.DexkitBuilder
+import io.github.fplus.core.helper.ImmersiveHelper
 import io.github.fplus.core.hook.logic.ClipboardLogic
 import io.github.fplus.core.hook.logic.DownloadLogic
 import io.github.fplus.core.ui.activity.FreedomSettingActivity
@@ -55,8 +57,8 @@ class HMainActivity : BaseHook() {
             mainTitleBar?.isVisible = visible
             bottomTabView?.isVisible = visible
 
-            // val activity = mainTitleBar?.context?.asOrNull<Activity>() ?: return
-            // ImmersiveHelper.immersive(activity, !visible, !visible)
+            val activity = mainTitleBar?.context?.asOrNull<Activity>() ?: return
+            ImmersiveHelper.immersive(activity, !visible, !visible)
         }
     }
 
@@ -72,7 +74,8 @@ class HMainActivity : BaseHook() {
     fun onCreateBefore(params: XC_MethodHook.MethodHookParam, savedInstanceState: Bundle?) {
         hookBlockRunning(params) {
             thisActivity.runCatching {
-                val startModuleSetting = intent?.getBooleanExtra("startModuleSetting", false) ?: false
+                val startModuleSetting =
+                    intent?.getBooleanExtra("startModuleSetting", false) ?: false
                 if (startModuleSetting) {
                     intent.setClass(this, FreedomSettingActivity::class.java)
                     intent.putExtra("isModuleStart", true)

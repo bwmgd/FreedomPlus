@@ -2,6 +2,7 @@ package io.github.fplus.core.config
 
 import android.content.Context
 import android.os.Environment
+import android.widget.Toast
 import com.freegang.extension.child
 import com.freegang.extension.getStringOrDefault
 import com.freegang.extension.parseJSON
@@ -40,8 +41,12 @@ class ConfigV1 private constructor() {
         }
 
         fun clear(context: Context) {
-            mmkv.clearAll()
+            clearMMKV()
             getFreedomDir(context).deleteRecursively()
+        }
+
+        fun clearMMKV() {
+            mmkv.clearAll()
         }
 
         fun get() = config
@@ -164,10 +169,10 @@ class ConfigV1 private constructor() {
             field = value
         }
 
-    /// "00000" 代表:长按(左上,右上,左下,右下),双击 内容为OperateType(0~7)
-    var triggerOperateType: String = "00000"
+    /// "00000" 代表:长按,双击(左上,右上,左下,右下) 内容为OperateType(0~8)
+    var triggerOperateType: String = "00000000"
         get() {
-            field = mmkv.getString("triggerOperate", "00000") ?: "00000"
+            field = mmkv.getString("triggerOperate", "00000000") ?: "00000000"
             return field
         }
         set(value) {
@@ -347,9 +352,9 @@ class ConfigV1 private constructor() {
         }
 
     /// 清爽模式
-    var isNeatMode: Boolean = false
+    var isNeatMode: Boolean = true
         get() {
-            field = mmkv.getBoolean("isNeatMode", false)
+            field = mmkv.getBoolean("isNeatMode", true)
             return field
         }
         set(value) {

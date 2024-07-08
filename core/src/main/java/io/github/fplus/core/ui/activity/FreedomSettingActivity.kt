@@ -1,5 +1,6 @@
 package io.github.fplus.core.ui.activity
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Bundle
 import android.widget.Toast
@@ -10,7 +11,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -73,10 +73,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.freegang.extension.findMethodInvoke
 import com.freegang.ktutils.app.KToastUtils
-import com.freegang.ktutils.reflect.methodInvokeFirst
 import io.github.fplus.OperateType
 import io.github.fplus.TriggerType
-import io.github.fplus.core.R
+import io.github.fplus.core.config.ConfigV1
 import io.github.fplus.core.helper.DexkitBuilder
 import io.github.fplus.core.helper.HighlightStyleBuilder
 import io.github.fplus.core.ui.ModuleTheme
@@ -211,7 +210,7 @@ class FreedomSettingActivity : XplerActivity() {
                                                 }
                                         }.onFailure {
                                             withContext(Dispatchers.Main) {
-                                                    KToastUtils.show(application, "更新日志获取失败")
+                                                KToastUtils.show(application, "更新日志获取失败")
                                             }
                                         }
                                     }
@@ -284,13 +283,13 @@ class FreedomSettingActivity : XplerActivity() {
         LazyColumn(
             modifier = modifier,
         ) {
+            item { OperateItem() }
             item { DownloadItem() }
             item { SaveEmojiItem() }
             item { TranslucentItem() }
             item { RemoveStickerItem() }
             item { RemoveBottomCtrlBarItem() }
             item { PreventRecalledItem() }
-            item { DoubleClickTypeItem() }
             item { LongtimeVideoToastItem() }
             item { HideTopTabItem() }
             item { HideBottomTabItem() }
@@ -299,12 +298,12 @@ class FreedomSettingActivity : XplerActivity() {
             item { VideoOptionBarFilterItem() }
             item { VideoFilterItem() }
             item { DialogFilterItem() }
-            item { NeatModeItem() }
             item { AutoPlayItem() }
             item { ImmersiveItem() }
             item { CommentColorModeItem() }
             item { WebDavItem() }
             item { TimedExitItem() }
+            item { ClearSetting() }
             /* item { CrashToleranceItem() } */
             /* item { DisablePluginItem() } */
         }
@@ -591,8 +590,6 @@ class FreedomSettingActivity : XplerActivity() {
             }
         )
     }
-            item {
-                OperateItem()
 
     @Composable
     private fun PreventRecalledItem() {
@@ -652,14 +649,15 @@ class FreedomSettingActivity : XplerActivity() {
         }
     }
 
+    @OptIn(ExperimentalLayoutApi::class)
     @Composable
-    private fun DoubleClickTypeItem() {
+    private fun OperateItem() {
         var showDoubleClickModeDialog by remember { mutableStateOf(false) }
 
         SwitchItem(
-            text = "双击视频响应类型",
-            subtext = "点击调整双击视频响应方式",
-            checked = model.isDoubleClickType.observeAsState(false),
+            text = "双击/长按视频响应类型",
+            subtext = "点击调整视频响应方式",
+            checked = model.isTriggerType.observeAsState(false),
             onClick = {
                 showDoubleClickModeDialog = true
             },
@@ -669,41 +667,68 @@ class FreedomSettingActivity : XplerActivity() {
         )
 
         if (showDoubleClickModeDialog) {
-            var radioIndex by remember { mutableStateOf(model.doubleClickType.value ?: 2) }
             FMessageDialog(
-                title = "请选择双击响应模式",
+                title = "请点击需要调整的响应模式",
                 confirm = "更改",
                 onlyConfirm = true,
                 onConfirm = { showDoubleClickModeDialog = false },
             ) {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(
-                            selected = radioIndex == 1,
-                            onClick = {
-                                radioIndex = 1
-                                model.setDoubleClickType(radioIndex)
-                            },
-                        )
-                        Spacer(modifier = Modifier.padding(horizontal = 4.dp))
+                var doubleClickType by remember {
+                    mutableStateOf(model.triggerOperateType.value ?: "00000000")
+                }
+                FlowRow(horizontalArrangement = Arrangement.Center, maxItemsInEachRow = 2) {
+                    TriggerType.values().forEachIndexed { index, triggerType ->
+                        var showTriggerDialog by remember { mutableStateOf(false) }
+
                         Text(
-                            text = "打开评论",
+                            text = triggerType.value,
                             style = MaterialTheme.typography.body1,
+                            modifier = Modifier
+                                .clickable {
+                                    showTriggerDialog = true
+                                }
+                                .padding(5.dp)
+                                .weight(1f, true)
                         )
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(
-                            selected = radioIndex == 2,
-                            onClick = {
-                                radioIndex = 2
-                                model.setDoubleClickType(radioIndex)
-                            },
-                        )
-                        Spacer(modifier = Modifier.padding(horizontal = 4.dp))
-                        Text(
-                            text = "点赞视频",
-                            style = MaterialTheme.typography.body1,
-                        )
+
+                        if (showTriggerDialog) {
+                            FMessageDialog(
+                                title = "请选择${triggerType.value}响应内容",
+                                confirm = "更改",
+                                onlyConfirm = true,
+                                onConfirm = { showTriggerDialog = false },
+                            ) {
+                                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                                    for (type in OperateType.values()) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            RadioButton(
+                                                selected = OperateType.fromTriggerString(
+                                                    doubleClickType,
+                                                    triggerType
+                                                ) == type,
+                                                onClick = {
+                                                    doubleClickType = doubleClickType.replaceRange(
+                                                        index,
+                                                        index + 1,
+                                                        type.ordinal.toString()
+                                                    )
+                                                    model.changeDoubleClickType(doubleClickType)
+                                                },
+                                            )
+                                            Spacer(
+                                                modifier = Modifier.padding(
+                                                    horizontal = 4.dp
+                                                )
+                                            )
+                                            Text(
+                                                text = type.value,
+                                                style = MaterialTheme.typography.body1,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1021,7 +1046,11 @@ class FreedomSettingActivity : XplerActivity() {
         )
 
         if (showFilterDialog) {
-                    var inputValue by remember { mutableStateOf(model.videoOptionBarFilterKeywords.value ?: "") }
+            var inputValue by remember {
+                mutableStateOf(
+                    model.videoOptionBarFilterKeywords.value ?: ""
+                )
+            }
             FMessageDialog(
                 title = {
                     Row(
@@ -1086,7 +1115,10 @@ class FreedomSettingActivity : XplerActivity() {
                         },
                         visualTransformation = { text ->
                             TransformedText(
-                                        text = buildFilterTypeStyle(model.videoOptionBarFilterTypes, text.text),
+                                text = buildFilterTypeStyle(
+                                    model.videoOptionBarFilterTypes,
+                                    text.text
+                                ),
                                 offsetMapping = OffsetMapping.Identity
                             )
                         }
@@ -1144,7 +1176,7 @@ class FreedomSettingActivity : XplerActivity() {
         )
 
         if (showFilterDialog) {
-                    var inputValue by remember { mutableStateOf(model.videoFilterKeywords.value ?: "") }
+            var inputValue by remember { mutableStateOf(model.videoFilterKeywords.value ?: "") }
             FMessageDialog(
                 title = {
                     Row(
@@ -1209,7 +1241,7 @@ class FreedomSettingActivity : XplerActivity() {
                         },
                         visualTransformation = { text ->
                             TransformedText(
-                                        text = buildFilterTypeStyle(model.videoFilterTypes, text.text),
+                                text = buildFilterTypeStyle(model.videoFilterTypes, text.text),
                                 offsetMapping = OffsetMapping.Identity
                             )
                         }
@@ -1263,7 +1295,7 @@ class FreedomSettingActivity : XplerActivity() {
         )
 
         if (showFilterDialog) {
-                    var inputValue by remember { mutableStateOf(model.dialogFilterKeywords.value ?: "") }
+            var inputValue by remember { mutableStateOf(model.dialogFilterKeywords.value ?: "") }
             FMessageDialog(
                 title = {
                     Row(
@@ -1366,7 +1398,6 @@ class FreedomSettingActivity : XplerActivity() {
                 )
             }
         }
-
     }
 
     @Composable
@@ -1441,7 +1472,7 @@ class FreedomSettingActivity : XplerActivity() {
         )
 
         if (showSettingDialog) {
-                    val systemControllerValue = model.systemControllerValue.value ?: listOf(false, false)
+            val systemControllerValue = model.systemControllerValue.value ?: listOf(false, false)
             val isHideStatusBar = remember { mutableStateOf(systemControllerValue[0]) }
             val isHideNavigateBar = remember { mutableStateOf(systemControllerValue[1]) }
             FMessageDialog(
@@ -1678,7 +1709,7 @@ class FreedomSettingActivity : XplerActivity() {
                                             }
                                         )
                                         .fillMaxWidth()
-                                                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                                        .padding(horizontal = 16.dp, vertical = 12.dp)
                                 )
                             }
                         }
@@ -1946,6 +1977,44 @@ class FreedomSettingActivity : XplerActivity() {
         }
     }
 
+    @OptIn(ExperimentalFoundationApi::class)
+    @SuppressLint("UnrememberedMutableState")
+    @Composable
+    private fun ClearSetting() {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp)
+                .combinedClickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() },
+                    onClick = {},
+                    onLongClick = {
+                        ConfigV1.clearMMKV()
+                        showRestartAppDialog.value = true
+                    }
+                )
+                .then(Modifier.padding(vertical = 4.dp)),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(
+                    text = "清空设置",
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.body1,
+                )
+                Text(
+                    modifier = Modifier.padding(vertical = 2.dp),
+                    text = "长按清空设置",
+                    style = MaterialTheme.typography.body2,
+                )
+            }
+        }
+    }
+
     @Deprecated("暂存区")
     @Composable
     private fun CrashToleranceItem() {
@@ -2019,93 +2088,6 @@ class FreedomSettingActivity : XplerActivity() {
                 }
             },
         )
-    }
-
-
-    @OptIn(ExperimentalLayoutApi::class)
-    @Composable
-    private fun OperateItem() {
-        var showDoubleClickModeDialog by remember { mutableStateOf(false) }
-
-        SwitchItem(
-            text = "双击/长按视频响应类型",
-            subtext = "点击调整视频响应方式",
-            checked = model.isTriggerType.observeAsState(false),
-            onClick = {
-                showDoubleClickModeDialog = true
-            },
-            onCheckedChange = {
-                model.changeIsDoubleClickType(it)
-            }
-        )
-
-        if (showDoubleClickModeDialog) {
-            FMessageDialog(
-                title = "请点击需要调整的响应模式",
-                confirm = "更改",
-                onlyConfirm = true,
-                onConfirm = { showDoubleClickModeDialog = false },
-            ) {
-                var doubleClickType by remember {
-                    mutableStateOf(model.triggerOperateType.value ?: "000000")
-                }
-                FlowRow(horizontalArrangement = Arrangement.Center, maxItemsInEachRow = 2) {
-                    TriggerType.values().forEachIndexed { index, triggerType ->
-                        var showTriggerDialog by remember { mutableStateOf(false) }
-
-                        Text(
-                            text = triggerType.value,
-                            style = MaterialTheme.typography.body1,
-                            modifier = Modifier
-                                .clickable {
-                                    showTriggerDialog = true
-                                }
-                                .padding(5.dp)
-                                .weight(1f, true)
-                        )
-
-                        if (showTriggerDialog) {
-                            FMessageDialog(
-                                title = "请选择${triggerType.value}响应内容",
-                                confirm = "更改",
-                                onlyConfirm = true,
-                                onConfirm = { showTriggerDialog = false },
-                            ) {
-                                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                                    for (type in OperateType.values()) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            RadioButton(
-                                                selected = OperateType.fromTriggerString(
-                                                    doubleClickType,
-                                                    triggerType
-                                                ) == type,
-                                                onClick = {
-                                                    doubleClickType = doubleClickType.replaceRange(
-                                                        index,
-                                                        index + 1,
-                                                        type.ordinal.toString()
-                                                    )
-                                                    model.changeDoubleClickType(doubleClickType)
-                                                },
-                                            )
-                                            Spacer(
-                                                modifier = Modifier.padding(
-                                                    horizontal = 4.dp
-                                                )
-                                            )
-                                            Text(
-                                                text = type.value,
-                                                style = MaterialTheme.typography.body1,
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 
     @OptIn(ExperimentalFoundationApi::class)
