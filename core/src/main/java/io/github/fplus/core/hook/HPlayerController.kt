@@ -5,16 +5,15 @@ import com.freegang.extension.findFieldGetValue
 import com.freegang.extension.findMethodInvoke
 import com.ss.android.ugc.aweme.feed.adapter.VideoViewHolder
 import com.ss.android.ugc.aweme.feed.ui.PenetrateTouchRelativeLayout
-import de.robv.android.xposed.XC_MethodHook
 import io.github.fplus.core.base.BaseHook
 import io.github.fplus.core.config.ConfigV1
+import io.github.xpler.core.XplerLog
+import io.github.xpler.core.entity.EmptyHook
 import io.github.xpler.core.hookBlockRunning
-import io.github.xpler.core.log.XplerLog
+import io.github.xpler.core.proxy.MethodParam
 
 class HPlayerController : BaseHook() {
     companion object {
-        const val TAG = "HPlayerController"
-
         var playingAid: String? = ""
 
         @get:Synchronized
@@ -25,40 +24,42 @@ class HPlayerController : BaseHook() {
     private val config get() = ConfigV1.get()
 
     override fun setTargetClass(): Class<*> {
-        return findClass("com.ss.android.ugc.aweme.feed.controller.PlayerController")
+        return runCatching {
+            findClass("com.ss.android.ugc.aweme.feed.controller.PlayerController")
+        }.getOrDefault(EmptyHook::class.java)
     }
 
     @OnBefore("onPlaying")
-    fun onPlayingAfter(params: XC_MethodHook.MethodHookParam, aid: String?) {
+    fun onPlayingAfter(params: MethodParam, aid: String?) {
         hookBlockRunning(params) {
             // XplerLog.d("onPlaying: $aid")
             playingAid = aid
             isPlaying = true
-            callOpenCleanMode(params, true)
+            // callOpenCleanMode(params, true)
         }.onFailure {
             XplerLog.e(it)
         }
     }
 
     @OnBefore("onResumePlay")
-    fun onResumePlayBefore(params: XC_MethodHook.MethodHookParam, aid: String?) {
+    fun onResumePlayBefore(params: MethodParam, aid: String?) {
         hookBlockRunning(params) {
             // XplerLog.d("onResumePlay: $aid")
             playingAid = aid
             isPlaying = true
-            callOpenCleanMode(params, true)
+            // callOpenCleanMode(params, true)
         }.onFailure {
             XplerLog.e(it)
         }
     }
 
     @OnBefore("onPausePlay")
-    fun onPausePlayBefore(params: XC_MethodHook.MethodHookParam, aid: String?) {
+    fun onPausePlayBefore(params: MethodParam, aid: String?) {
         hookBlockRunning(params) {
             // XplerLog.d("onPausePlay: $aid")
             if (playingAid == aid) {
                 isPlaying = false
-                callOpenCleanMode(params, false)
+                // callOpenCleanMode(params, false)
             }
         }.onFailure {
             XplerLog.e(it)
@@ -66,20 +67,20 @@ class HPlayerController : BaseHook() {
     }
 
     // @OnBefore("onPlayStop")
-    fun onPlayStopBefore(params: XC_MethodHook.MethodHookParam, aid: String?) {
+    fun onPlayStopBefore(params: MethodParam, aid: String?) {
         hookBlockRunning(params) {
             // XplerLog.d("onPlayStop: $aid")
             if (playingAid == aid) {
                 isPlaying = false
-                callOpenCleanMode(params, false)
+                // callOpenCleanMode(params, false)
             }
         }.onFailure {
-            XplerLog.tagE(TAG, it)
+            XplerLog.e(it)
         }
     }
 
     // @OnBefore("onPlayCompleted")
-    fun onPlayCompletedAfter(params: XC_MethodHook.MethodHookParam, aid: String?) {
+    fun onPlayCompletedAfter(params: MethodParam, aid: String?) {
         hookBlockRunning(params) {
             // XplerLog.d("onPlayCompleted: $aid")
             isPlaying = false
@@ -89,7 +90,7 @@ class HPlayerController : BaseHook() {
     }
 
     // @OnAfter("onPlayCompletedFirstTime")
-    fun onPlayCompletedFirstTimeAfter(params: XC_MethodHook.MethodHookParam, aid: String?) {
+    fun onPlayCompletedFirstTimeAfter(params: MethodParam, aid: String?) {
         hookBlockRunning(params) {
             // XplerLog.d("onPlayCompletedFirstTime: $aid")
             isPlaying = false
@@ -100,7 +101,7 @@ class HPlayerController : BaseHook() {
 
     @OnAfter("onPlayProgressChange")
     fun onPlayProgressChangeBefore(
-        params: XC_MethodHook.MethodHookParam, aid: String?,
+        params: MethodParam, aid: String?,
         current: Long,
         duration: Long,
     ) {
@@ -112,7 +113,7 @@ class HPlayerController : BaseHook() {
         }
     }
 
-    private fun callOpenCleanMode(params: XC_MethodHook.MethodHookParam, bool: Boolean) {
+    private fun callOpenCleanMode(params: MethodParam, bool: Boolean) {
         if (!config.isNeatMode) {
             return
         }
@@ -121,11 +122,10 @@ class HPlayerController : BaseHook() {
             return
         }
 
-        val videoViewHolder = params.thisObject
-            .findMethodInvoke<VideoViewHolder> {
-                returnType(VideoViewHolder::class.java, true)
-                predicate { it.parameterTypes.isEmpty() }
-            }
+        val videoViewHolder = params.thisObject?.findMethodInvoke<VideoViewHolder> {
+            returnType(VideoViewHolder::class.java, true)
+            predicate { it.parameterTypes.isEmpty() }
+        }
 
         val view = videoViewHolder?.findFieldGetValue<PenetrateTouchRelativeLayout> {
             type(PenetrateTouchRelativeLayout::class.java)

@@ -25,7 +25,6 @@ import com.freegang.extension.removeInParent
 import com.ss.android.ugc.aweme.homepage.ui.titlebar.MainTitleBar
 import com.ss.android.ugc.aweme.homepage.ui.view.MainTabStripScrollView
 import com.ss.android.ugc.aweme.main.MainActivity
-import de.robv.android.xposed.XC_MethodHook
 import io.github.fplus.core.base.BaseHook
 import io.github.fplus.core.config.ConfigV1
 import io.github.fplus.core.helper.AutoPlayHelper
@@ -34,17 +33,16 @@ import io.github.fplus.core.helper.ImmersiveHelper
 import io.github.fplus.core.hook.logic.ClipboardLogic
 import io.github.fplus.core.hook.logic.DownloadLogic
 import io.github.fplus.core.ui.activity.FreedomSettingActivity
-import io.github.xpler.core.KtXposedHelpers
+import io.github.xpler.core.XplerLog
 import io.github.xpler.core.hookBlockRunning
-import io.github.xpler.core.log.XplerLog
+import io.github.xpler.core.moduleVersionName
+import io.github.xpler.core.proxy.MethodParam
 import io.github.xpler.core.thisActivity
 import io.github.xpler.core.thisContext
 import kotlinx.coroutines.delay
 
 class HMainActivity : BaseHook() {
     companion object {
-        const val TAG = "HMainActivity"
-
         @SuppressLint("StaticFieldLeak")
         var mainTitleBar: View? = null
 
@@ -69,7 +67,7 @@ class HMainActivity : BaseHook() {
     }
 
     @OnBefore("onCreate")
-    fun onCreateBefore(params: XC_MethodHook.MethodHookParam, savedInstanceState: Bundle?) {
+    fun onCreateBefore(params: MethodParam, savedInstanceState: Bundle?) {
         hookBlockRunning(params) {
             thisActivity.runCatching {
                 val startModuleSetting =
@@ -93,10 +91,10 @@ class HMainActivity : BaseHook() {
     }
 
     @OnAfter("onCreate")
-    fun onCreateAfter(params: XC_MethodHook.MethodHookParam, savedInstanceState: Bundle?) {
+    fun onCreateAfter(params: MethodParam, savedInstanceState: Bundle?) {
         hookBlockRunning(params) {
             val activity = thisActivity
-            XplerLog.d("version: ${KtXposedHelpers.moduleVersionName(activity)} - ${activity.appVersionName}(${activity.appVersionCode})")
+            XplerLog.d("version: ${activity.moduleVersionName} - ${activity.appVersionName}(${activity.appVersionCode})")
             DouYinMain.timerExitHelper?.restart()
 
             openAutoPlay(activity)
@@ -106,7 +104,7 @@ class HMainActivity : BaseHook() {
     }
 
     @OnAfter("onResume")
-    fun onResume(params: XC_MethodHook.MethodHookParam) {
+    fun onResume(params: MethodParam) {
         hookBlockRunning(params) {
             val activity = thisObject as Activity
 
@@ -119,7 +117,7 @@ class HMainActivity : BaseHook() {
     }
 
     @OnBefore("onPause")
-    fun onPause(params: XC_MethodHook.MethodHookParam) {
+    fun onPause(params: MethodParam) {
         hookBlockRunning(params) {
             removeClipboardListener(thisActivity)
             clearView()

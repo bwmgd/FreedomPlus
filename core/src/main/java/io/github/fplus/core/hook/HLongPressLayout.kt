@@ -21,8 +21,6 @@ import com.freegang.ktutils.view.KViewUtils
 import com.ss.android.ugc.aweme.ad.feed.VideoViewHolderRootView
 import com.ss.android.ugc.aweme.feed.model.Aweme
 import com.ss.android.ugc.aweme.feed.ui.PenetrateTouchRelativeLayout
-import de.robv.android.xposed.XC_MethodHook
-import io.github.fplus.OperateType
 import io.github.fplus.core.base.BaseHook
 import io.github.fplus.core.config.ConfigV1
 import io.github.fplus.core.helper.DexkitBuilder
@@ -30,20 +28,15 @@ import io.github.fplus.core.hook.logic.DownloadLogic
 import io.github.fplus.core.hook.logic.cityInfo
 import io.github.fplus.core.hook.logic.createDate
 import io.github.fplus.core.ui.activity.FreedomSettingActivity
+import io.github.xpler.core.XplerLog
 import io.github.xpler.core.hookBlockRunning
 import io.github.xpler.core.hookClass
-import io.github.xpler.core.log.XplerLog
+import io.github.xpler.core.lparam
+import io.github.xpler.core.proxy.MethodParam
 import io.github.xpler.core.thisView
-import kotlin.math.abs
 
 
 class HLongPressLayout : BaseHook() {
-    companion object {
-        const val TAG = "HLongPressLayout"
-        private val LONG_PRESS_TIME = ViewConfiguration.getLongPressTimeout()
-        private val DOUBLE_TAP_TIME = ViewConfiguration.getDoubleTapTimeout()
-    }
-
     private val config
         get() = ConfigV1.get()
 
@@ -52,6 +45,9 @@ class HLongPressLayout : BaseHook() {
     private var lastTapTimeMs: Long = 0
     private var touchDownX: Float = 0f
     private var touchDownY: Float = 0f
+
+    private val LONG_PRESS_TIME = ViewConfiguration.getLongPressTimeout()
+    private val DOUBLE_TAP_TIME = ViewConfiguration.getDoubleTapTimeout()
 
     private var longPressRunnable: Runnable? = null
 
@@ -62,7 +58,7 @@ class HLongPressLayout : BaseHook() {
     }
 
     @OnAfter("onTouchEvent")
-    fun onTouchEventAfter(params: XC_MethodHook.MethodHookParam, event: MotionEvent) {
+    fun onTouchEventAfter(params: MethodParam, event: MotionEvent) {
         hookBlockRunning(params) {
             longPressRunnable = longPressRunnable ?: Runnable { onLongPress(thisView, event) }
 
@@ -105,17 +101,27 @@ class HLongPressLayout : BaseHook() {
             }
 
         }.onFailure {
-            XplerLog.tagE(TAG, it)
+            XplerLog.e(it)
         }
     }
 
     private fun isMoved(event: MotionEvent): Boolean {
-        return abs(touchDownX - event.x) > 10 || abs(touchDownY - event.y) > 10
+        return Math.abs(touchDownX - event.x) > 10 || Math.abs(touchDownY - event.y) > 10
+    }
+
+    private fun onClick(view: View, event: MotionEvent) {
+
     }
 
     private fun onDoubleClick(view: View, event: MotionEvent) {
+        if (!config.isDoubleClickType)
+            return
+
         val holderRootView = view.firstParentOrNull(VideoViewHolderRootView::class.java) ?: return
-        doOperate(holderRootView, operateFormPosition(event.x, event.y, true))
+        when (config.doubleClickType) {
+            1 -> onClickView(holderRootView, targetContent = Regex("评论(.*?)，按钮"))// 打开评论区
+            2 -> {} // 点赞
+        }
     }
 
     private fun onLongPress(view: View, event: MotionEvent) {
@@ -126,14 +132,22 @@ class HLongPressLayout : BaseHook() {
         if (!config.isNeatMode)
             return
 
+        if (!config.longPressMode) {
+            if (event.y < screenSize.height / 2)
+                return
+        } else {
+            if (event.y > screenSize.height / 2)
+                return
+        }
+
         val holderRootView = view.firstParentOrNull(VideoViewHolderRootView::class.java) ?: return
-        doOperate(holderRootView, operateFormPosition(event.x, event.y, false))
+        showOptionsMenu(holderRootView)
     }
 
     private fun showOptionsMenu(view: ViewGroup) {
         if (HDetailPageFragment.isComment) return
 
-        val items = getChoiceItems().toTypedArray()
+        val items = getChoiceItems(view).toTypedArray()
         showChoiceDialog(
             context = view.context,
             title = "Freedom+",
@@ -144,7 +158,7 @@ class HLongPressLayout : BaseHook() {
         )
     }
 
-    private fun getChoiceItems(): List<String> {
+    private fun getChoiceItems(view: View): List<String> {
         val items = mutableListOf("评论", "收藏", "分享")
 
         if (config.isDownload) {
@@ -197,8 +211,7 @@ class HLongPressLayout : BaseHook() {
 
             "视频信息" -> {
                 singleLaunchMain("$item") {
-                    val msg =
-                        "视频属地: ${aweme?.cityInfo()}\n发布时间: ${aweme?.createDate()}".trim()
+                    val msg = "视频属地: ${aweme?.cityInfo()}\n发布时间: ${aweme?.createDate()}".trim()
                     showMessageDialog(
                         context = view.context,
                         title = "视频信息",
@@ -291,7 +304,6 @@ class HLongPressLayout : BaseHook() {
         targetText: Regex = Regex(""),
         targetHint: Regex = Regex(""),
         targetContent: Regex = Regex(""),
-        isLongClick: Boolean = false
     ) {
         parent.forEachChild {
             var needClick = false
@@ -304,25 +316,15 @@ class HLongPressLayout : BaseHook() {
             if (!needClick) return@forEachChild
             // KLogCat.d("找到: \n${this}")
 
-            if (isLongClick) {
-                val onClickListener = KViewUtils.getOnLongClickListener(it)
-                if (onClickListener != null) {
-                    if (!KViewUtils.isFastClick(200L)) {
-                        onClickListener.onLongClick(it)
-                    }
-                    return@forEachChild
+            // 是否具有点击事件
+            val onClickListener = KViewUtils.getOnClickListener(it)
+            if (onClickListener != null) {
+                if (!KViewUtils.isFastClick(200L)) {
+                    onClickListener.onClick(it)
                 }
-            } else {
-                // 是否具有点击事件
-                val onClickListener = KViewUtils.getOnClickListener(it)
-                if (onClickListener != null) {
-                    if (!KViewUtils.isFastClick(200L)) {
-                        onClickListener.onClick(it)
-                    }
-                    return@forEachChild
-                }
-                // KLogCat.d("没有点击事件")
+                return@forEachChild
             }
+            // KLogCat.d("没有点击事件")
 
             // 模拟手势
             val location = IntArray(2) { 0 }
@@ -331,19 +333,7 @@ class HLongPressLayout : BaseHook() {
                 location[0] = location[0] + it.right / 2
                 location[1] = location[1] + it.bottom / 2
                 if (!KViewUtils.isFastClick(200)) {
-                    if (isLongClick) {
-                        KAutomationUtils.simulateLongPressByView(
-                            it,
-                            location[0].toFloat(),
-                            location[1].toFloat()
-                        )
-                    } else {
-                        KAutomationUtils.simulateClickByView(
-                            it,
-                            location[0].toFloat(),
-                            location[1].toFloat(),
-                        )
-                    }
+                    KAutomationUtils.simulateClickByView(it, location[0].toFloat(), location[1].toFloat())
                 }
                 return@forEachChild
             }
@@ -356,9 +346,10 @@ class HLongPressLayout : BaseHook() {
     }
 
     override fun onInit() {
+
         // 长按菜单事件拦截
         DexkitBuilder.longPressEventClazz?.also {
-            lpparam.hookClass(it)
+            lparam.hookClass(it)
                 .method(
                     "onLongPressAwemeSure",
                     Float::class.java,
@@ -371,21 +362,23 @@ class HLongPressLayout : BaseHook() {
                         if (!config.isNeatMode)
                             return@onBefore
 
-                        if (!config.isTriggerType)
-                            return@onBefore
-
-                        aweme = thisObject.findFieldGetValue { type(Aweme::class.java) }
+                        aweme = thisObject?.findFieldGetValue { type(Aweme::class.java) }
                             ?: HVideoViewHolder.aweme
 
-                        if (operateFormPosition(x, y, false) != OperateType.ORIGINAL) result =
-                            Void.TYPE
+                        if (config.longPressMode) {
+                            if (y < screenSize.height / 2)
+                                setResultVoid()
+                        } else {
+                            if (y > screenSize.height / 2)
+                                setResultVoid()
+                        }
                     }
                 }
         }
 
         // 双击点赞事件拦截
         DexkitBuilder.doubleClickEventClazz?.also {
-            lpparam.hookClass(it)
+            lparam.hookClass(it)
                 .methodAllByParamTypes(
                     View::class.java,
                     MotionEvent::class.java,
@@ -393,70 +386,13 @@ class HLongPressLayout : BaseHook() {
                     MotionEvent::class.java,
                 ) {
                     onBefore {
-                        if (!config.isTriggerType)
+                        if (!config.isDoubleClickType)
                             return@onBefore
 
-                        result = Void.TYPE
+                        if (config.doubleClickType == 1)
+                            setResultVoid()
                     }
                 }
         }
-    }
-
-    private fun operateFormPosition(x: Float, y: Float, isDoubleClick: Boolean): OperateType? =
-        OperateType.fromPosition(
-            x, y, screenSize.width, screenSize.height, config.triggerOperateType, isDoubleClick
-        )
-
-    private fun doOperate(view: ViewGroup, operateType: OperateType?): Boolean {
-        operateType ?: return false
-        when (operateType) {
-            OperateType.LIKE -> {
-                onClickView(view, targetContent = Regex("点赞(.*?)，按钮"))
-                showToast(view.context, "点赞成功")
-            }
-
-            OperateType.COMMENT -> {
-                onClickView(view, targetContent = Regex("评论(.*?)，按钮"))
-            }
-
-            OperateType.FORWARD -> {
-                onClickView(view, targetContent = Regex("分享(.*?)，按钮"))
-            }
-
-            OperateType.COLLECT -> {
-                onClickView(view, targetContent = Regex("收藏(.*?)，按钮"))
-                showToast(view.context, "收藏成功")
-            }
-
-            OperateType.DOWNLOAD -> {
-                DownloadLogic(
-                    hook = this@HLongPressLayout,
-                    context = view.context,
-                    aweme = aweme,
-                )
-            }
-
-            OperateType.ORIGINAL -> {
-                return false
-            }
-
-            OperateType.MODULE -> {
-                showOptionsMenu(view)
-            }
-
-            OperateType.INFO -> {
-                singleLaunchMain(OperateType.INFO.value) {
-                    val msg =
-                        "视频属地: ${aweme?.cityInfo()}\n发布时间: ${aweme?.createDate()}".trim()
-                    showMessageDialog(
-                        context = view.context,
-                        title = "视频信息",
-                        content = msg,
-                        singleButton = true,
-                    )
-                }
-            }
-        }
-        return true
     }
 }

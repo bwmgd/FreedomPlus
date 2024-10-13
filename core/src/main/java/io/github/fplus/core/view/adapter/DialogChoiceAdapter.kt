@@ -1,12 +1,12 @@
 package io.github.fplus.core.view.adapter
 
 import android.content.Context
+import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.BaseAdapter
 import android.widget.TextView
 import io.github.fplus.core.R
-import io.github.xpler.core.KtXposedHelpers
 
 class DialogChoiceAdapter<T : CharSequence>(
     private val context: Context,
@@ -28,7 +28,7 @@ class DialogChoiceAdapter<T : CharSequence>(
 
         if (convertView == null) {
             viewHolder = ViewHolder()
-            view = KtXposedHelpers.inflateView(context, R.layout.dialog_choice_item)
+            view = LayoutInflater.from(context).inflate(R.layout.dialog_choice_item, parent, false)
             viewHolder.itemTextView = view.findViewById(R.id.choiceItemText)
             view.tag = viewHolder
         } else {

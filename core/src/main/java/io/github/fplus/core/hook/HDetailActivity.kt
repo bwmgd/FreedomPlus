@@ -4,20 +4,16 @@ import android.app.Activity
 import com.freegang.extension.findMethodInvoke
 import com.ss.android.ugc.aweme.detail.ui.DetailActivity
 import com.ss.android.ugc.aweme.feed.model.Aweme
-import de.robv.android.xposed.XC_MethodHook
 import io.github.fplus.core.base.BaseHook
 import io.github.fplus.core.config.ConfigV1
 import io.github.fplus.core.hook.logic.ClipboardLogic
 import io.github.fplus.core.hook.logic.DownloadLogic
+import io.github.xpler.core.XplerLog
 import io.github.xpler.core.hookBlockRunning
-import io.github.xpler.core.log.XplerLog
+import io.github.xpler.core.proxy.MethodParam
 import io.github.xpler.core.thisActivity
 
 class HDetailActivity : BaseHook() {
-    companion object {
-        const val TAG = "HDetailActivity"
-    }
-
     private val config get() = ConfigV1.get()
 
     private val clipboardLogic = ClipboardLogic(this)
@@ -27,7 +23,7 @@ class HDetailActivity : BaseHook() {
     }
 
     @OnAfter("onResume")
-    fun onResumeAfter(params: XC_MethodHook.MethodHookParam) {
+    fun onResumeAfter(params: MethodParam) {
         hookBlockRunning(params) {
             addClipboardListener(thisActivity)
         }.onFailure {
@@ -36,7 +32,7 @@ class HDetailActivity : BaseHook() {
     }
 
     @OnBefore("onPause")
-    fun onPauseBefore(params: XC_MethodHook.MethodHookParam) {
+    fun onPauseBefore(params: MethodParam) {
         hookBlockRunning(params) {
             removeClipboardListener(thisActivity)
         }.onFailure {
